@@ -14,6 +14,7 @@ from app.rate_limit import clear_rate_limit_state
 
 @pytest.fixture()
 def client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]:
+    clear_rate_limit_state()
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
