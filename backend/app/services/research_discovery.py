@@ -5,6 +5,7 @@ from app.models import ResearchRun, Source
 from app.services.tinyfish_search import (
     TinyFishConfigurationError,
     TinyFishSearchError,
+    canonicalize_url,
     search_research_papers,
 )
 
@@ -45,10 +46,13 @@ def run_research_discovery(run_id: str) -> None:
             return
 
         for result in results:
+            canonical_url = canonicalize_url(result.url)
+            if canonical_url is None:
+                continue
             existing = db.scalar(
                 select(Source.id).where(
                     Source.run_id == run.id,
-                    Source.canonical_url == result.url,
+                    Source.canonical_url == canonical_url,
                 )
             )
             if existing:
@@ -56,7 +60,7 @@ def run_research_discovery(run_id: str) -> None:
             db.add(
                 Source(
                     run_id=run.id,
-                    canonical_url=result.url,
+                    canonical_url=canonical_url,
                     title=result.title,
                     publisher=result.publisher,
                     publication_year=result.publication_year,
