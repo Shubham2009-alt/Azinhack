@@ -20,7 +20,7 @@ Research question → query planning → TinyFish discovery/retrieval → struct
 - Frontend: React, Vite, TypeScript.
 - Backend: Python 3.12, FastAPI, Pydantic, HTTPX.
 - Analysis: configurable LLM API with structured output and deterministic validation.
-- Research discovery: TinyFish Search API (`research_paper` domain type) plus TinyFish Fetch for accessible page content; LLM analysis remains a follow-up step.
+- Research discovery and analysis: TinyFish Search and Fetch plus a configurable OpenAI-compatible chat-completions API for evidence-validated claim extraction.
 - Persistence: SQLAlchemy 2.x, SQLite (Alembic migrations remain a follow-up).
 - Quality: pytest and Ruff; frontend ESLint and TypeScript build.
 
