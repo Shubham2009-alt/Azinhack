@@ -5,7 +5,7 @@ class Base(DeclarativeBase):
     pass
 
 
-from app.models.research import Claim, Report, ResearchRun, Source
-from app.models.graph import ClaimRelation, EvidenceLink
+from app.models.research import Claim, Report, ResearchRun, Source  # noqa: E402
+from app.models.graph import ClaimRelation, EvidenceLink  # noqa: E402
 
 __all__ = ["Base", "Claim", "ClaimRelation", "EvidenceLink", "Report", "ResearchRun", "Source"]
