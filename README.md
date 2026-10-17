@@ -16,7 +16,7 @@ It is an evidence-traceability tool for early-stage literature exploration—not
 - [x] Frontend results workspace displays processing status, source cards, evidence-linked claims, candidate gaps, limitations and an interactive source/claim relationship view.
 
 ## MVP pipeline
-Research question → TinyFish discovery/retrieval → evidence-validated claims → cross-source comparison and tentative gaps → final cited report and evidence graph.
+Research question → TinyFish discovery/retrieval → evidence-validated claims → cross-source comparison and tentative gaps → evidence-linked report draft and graph.
 
 ## Research results API
 
@@ -31,7 +31,7 @@ Research question → TinyFish discovery/retrieval → evidence-validated claims
 - Analysis: configurable LLM API with structured output and deterministic validation.
 - Research discovery and analysis: TinyFish Search and Fetch plus a configurable OpenAI-compatible chat-completions API for evidence-validated claim extraction.
 - Persistence: SQLAlchemy 2.x, SQLite (Alembic migrations remain a follow-up).
-- Quality: pytest and Ruff; frontend ESLint and TypeScript build.
+- Quality: GitHub Actions CI runs pytest/Ruff and frontend ESLint/TypeScript build on pushes and pull requests.
 
 ## Repository map
 - `backend/app/main.py`: FastAPI health, run creation/status, report, source-list and evidence-graph endpoints; new runs start source discovery in a FastAPI background task.
@@ -108,4 +108,4 @@ The backend reads TinyFish and LLM configuration from environment variables. Con
 - Never bypass paywalls or access controls.
 
 ## Verification status
-The files have been added to the repository, but commands have not been executed in a runtime during this step. Do not interpret the existence of tests or scripts as proof that they pass.
+A GitHub Actions workflow has been added for backend tests/lint and frontend lint/build. The workflow result has not been confirmed, and the suite/build have not been executed in this environment. Treat verification as pending until the CI run is green.
