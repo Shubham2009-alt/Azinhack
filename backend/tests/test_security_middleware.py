@@ -38,3 +38,39 @@ def test_oversized_single_chunk_is_rejected_before_app_runs() -> None:
     assert response_body["error"]["code"] == "REQUEST_TOO_LARGE"
     response_headers = dict(sent[0]["headers"])
     assert response_headers[b"x-content-type-options"] == b"nosniff"
+    assert response_headers[b"cache-control"] == b"no-store"
+
+
+def test_api_responses_receive_no_store_cache_header() -> None:
+    sent = []
+
+    async def app(scope, receive, send):
+        await send({
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [(b"content-type", b"application/json")],
+        })
+        await send({"type": "http.response.body", "body": b"{}", "more_body": False})
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message):
+        sent.append(message)
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/research-runs/test",
+        "headers": [],
+        "query_string": b"",
+        "scheme": "http",
+        "server": ("testserver", 80),
+        "client": ("testclient", 12345),
+        "http_version": "1.1",
+    }
+
+    asyncio.run(RequestSecurityMiddleware(app)(scope, receive, send))
+
+    response_headers = dict(sent[0]["headers"])
+    assert response_headers[b"cache-control"] == b"no-store"
