@@ -10,7 +10,7 @@ It is an evidence-traceability tool for early-stage literature exploration—not
 - [x] React/Vite/TypeScript question form connected to the create-run API.
 - [x] TinyFish academic-paper search connected to new research runs; full-page fetch and LLM analysis remain pending.
 - [x] SQLAlchemy models and SQLite table initialization are added for research runs, sources, claims, reports and evidence-graph relationships.
-- [ ] Research orchestration, live provider integration and report generation are not implemented yet.
+- [ ] Full orchestration, full-page retrieval, claim extraction, report generation and graph API are not implemented yet.
 
 ## MVP pipeline
 Research question → query planning → TinyFish discovery/retrieval → structured extraction → evidence validation → claim comparison → candidate-gap analysis → cited report and evidence graph.
@@ -88,7 +88,7 @@ npm run lint
 The frontend submits questions to the API and displays the saved run ID. When `TINYFISH_API_KEY` is configured on the backend, a background task searches academic papers and stores source metadata. Without a key, the run fails with a clear configuration status. Full-page source retrieval, claim extraction, LLM analysis, report generation and graph retrieval are not implemented yet.
 
 ## Environment and security
-The backend reads optional TinyFish and LLM configuration from environment variables. TinyFish is called by the backend source-discovery service; LLM configuration is reserved for a later step. Use real credentials only in a local, ignored `.env` file or the deployment secret manager. Never commit API keys, tokens or real environment files. Provider integration will be added after verifying current official API contracts.
+The backend reads optional TinyFish and LLM configuration from environment variables. TinyFish is called by the backend source-discovery service; LLM configuration is reserved for a later step. Use real credentials only in a local, ignored `.env` file or the deployment secret manager. Never commit API keys, tokens or real environment files. Additional provider integration will follow verification of each official API contract.
 
 ## Evidence integrity
 - Preserve original source URLs and excerpts supporting claims.
