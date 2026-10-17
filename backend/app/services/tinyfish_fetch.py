@@ -86,18 +86,26 @@ def fetch_pages(urls: list[str], *, purpose: str, limit: int = 10) -> FetchBatch
     if not isinstance(raw_results, list) or not isinstance(raw_errors, list):
         raise TinyFishFetchError("TinyFish Fetch returned an unexpected response format.")
 
+    requested_urls = set(bounded_urls)
     pages: list[FetchedPage] = []
     failures: list[FetchFailure] = []
+    seen_result_urls: set[str] = set()
     for item in raw_results:
         if not isinstance(item, dict) or not isinstance(item.get("url"), str):
             continue
+        result_url = canonicalize_url(item["url"])
+        if result_url not in requested_urls or result_url in seen_result_urls:
+            continue
+        seen_result_urls.add(result_url)
+        raw_final_url = item.get("final_url")
+        final_url = canonicalize_url(raw_final_url) if isinstance(raw_final_url, str) else None
         text_value = item.get("text")
         if not isinstance(text_value, str):
             text_value = ""
         pages.append(
             FetchedPage(
-                url=item["url"],
-                final_url=item.get("final_url") if isinstance(item.get("final_url"), str) else None,
+                url=result_url,
+                final_url=final_url,
                 title=item.get("title") if isinstance(item.get("title"), str) else None,
                 description=item.get("description") if isinstance(item.get("description"), str) else None,
                 published_date=item.get("published_date") if isinstance(item.get("published_date"), str) else None,
@@ -105,12 +113,17 @@ def fetch_pages(urls: list[str], *, purpose: str, limit: int = 10) -> FetchBatch
                 text=text_value[:MAX_CONTENT_CHARS],
             )
         )
+    seen_error_urls: set[str] = set()
     for item in raw_errors:
         if not isinstance(item, dict) or not isinstance(item.get("url"), str):
             continue
+        error_url = canonicalize_url(item["url"])
+        if error_url not in requested_urls or error_url in seen_error_urls:
+            continue
+        seen_error_urls.add(error_url)
         error_value: Any = item.get("error")
         if not isinstance(error_value, str):
             error_value = item.get("code")
         code = str(error_value or "FETCH_FAILED").strip().upper().replace(" ", "_")[:80]
-        failures.append(FetchFailure(url=item["url"], code=code))
+        failures.append(FetchFailure(url=error_url, code=code))
     return FetchBatchResult(results=pages, errors=failures)
