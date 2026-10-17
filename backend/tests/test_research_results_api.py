@@ -144,6 +144,10 @@ def test_graph_returns_source_claim_and_relation_edges(client_and_session) -> No
     edge_types = [edge["type"] for edge in body["edges"]]
     assert edge_types.count("supports") == 2
     assert "qualifies" in edge_types
+    source_ids = {node["id"] for node in body["nodes"] if node["type"] == "source"}
+    claim_ids = {node["id"] for node in body["nodes"] if node["type"] == "claim"}
+    support_edges = [edge for edge in body["edges"] if edge["type"] == "supports"]
+    assert all(edge["source"] in source_ids and edge["target"] in claim_ids for edge in support_edges)
     assert any(edge["source"] == claim_a.id and edge["target"] == claim_b.id for edge in body["edges"])
 
 
