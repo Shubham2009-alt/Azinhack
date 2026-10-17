@@ -315,8 +315,8 @@ def get_research_graph(run_id: str, db: Session = Depends(get_db)) -> ResearchGr
         ))
         if source and claim.evidence_excerpt and claim.evidence_excerpt in (source.content_text or ""):
             edges.append(GraphEdgeResponse(
-                source=claim.id,
-                target=source.id,
+                source=source.id,
+                target=claim.id,
                 type="supports",
                 rationale="Evidence excerpt matches the retrieved source text.",
                 confidence=claim.confidence_label,
