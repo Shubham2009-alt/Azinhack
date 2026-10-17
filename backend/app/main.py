@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db, init_db
 from app.models import ResearchRun, Source
 from app.schemas import CreateResearchRunRequest, CreateResearchRunResponse, ResearchRunStatusResponse
+from app.services.research_discovery import run_research_discovery
 from app.settings import settings
 
 
@@ -47,6 +48,7 @@ def health_check() -> dict[str, str]:
 )
 def create_research_run(
     payload: CreateResearchRunRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> CreateResearchRunResponse:
     """Persist a validated research request; processing is added in a later step."""
@@ -61,6 +63,7 @@ def create_research_run(
     db.add(run)
     db.commit()
     db.refresh(run)
+    background_tasks.add_task(run_research_discovery, run.id)
     return CreateResearchRunResponse(run_id=run.id, status="queued")
 
 
