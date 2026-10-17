@@ -1,0 +1,65 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap");
+
+:root {
+  font-family: "DM Sans", sans-serif;
+  color: #20231f;
+  background: #f7f5ef;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --ink: #20231f;
+  --muted: #696d65;
+  --line: #e5e1d7;
+  --green: #245b43;
+  --orange: #f0a24d;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+button, textarea { font: inherit; }
+button { cursor: pointer; }
+.page-shell { max-width: 1180px; margin: 0 auto; padding: 0 38px; }
+.topbar { height: 82px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+.brand { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); text-decoration: none; font-family: Manrope, sans-serif; font-size: 19px; font-weight: 800; letter-spacing: -0.7px; }
+.brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px 11px 11px 3px; background: var(--green); color: white; font-size: 18px; }
+.brand-ai { color: var(--green); }
+.status-pill { display: inline-flex; align-items: center; gap: 8px; color: #4e6556; background: #eaf0e8; border: 1px solid #dbe6d8; border-radius: 100px; padding: 8px 12px; font-size: 12px; font-weight: 600; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: #4c9368; }
+.hero { max-width: 760px; margin: 76px auto 70px; text-align: center; }
+.eyebrow { color: var(--green); font-size: 11px; font-weight: 700; letter-spacing: 2px; margin: 0 0 18px; }
+h1 { font-family: Manrope, sans-serif; font-size: clamp(36px, 5vw, 57px); line-height: 1.1; letter-spacing: -2.7px; margin: 0; font-weight: 800; }
+.hero-copy { max-width: 600px; margin: 22px auto 32px; color: var(--muted); line-height: 1.7; font-size: 16px; }
+.question-card { text-align: left; background: #fffefa; border: 1px solid #dedbd1; border-radius: 18px; padding: 22px; box-shadow: 0 15px 50px #39331b0b; }
+.question-card label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 13px; }
+.question-card textarea { width: 100%; resize: vertical; min-height: 112px; border: 0; outline: 0; background: transparent; color: var(--ink); line-height: 1.6; font-size: 15px; }
+.question-card textarea::placeholder { color: #a2a49c; }
+.form-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #eeeae1; padding-top: 16px; gap: 12px; }
+.character-count { color: #999b93; font-size: 12px; }
+.form-footer button { border: 0; border-radius: 10px; padding: 12px 17px; background: var(--green); color: white; font-weight: 700; font-size: 13px; transition: background .15s ease, transform .15s ease; }
+.form-footer button:hover { background: #194631; transform: translateY(-1px); }
+.form-footer button span { padding-left: 9px; font-size: 17px; }
+.notice { margin: 14px 0 0; color: #765020; font-size: 13px; line-height: 1.5; }
+.examples { margin-top: 27px; }
+.examples > p { color: #8a8c83; font-size: 10px; font-weight: 700; letter-spacing: 1.6px; margin-bottom: 13px; }
+.example-list { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+.example-chip { border: 1px solid #e1ddd2; background: #fdfbf6; color: #4e514a; border-radius: 100px; padding: 9px 12px; font-size: 11px; }
+.example-chip:hover { border-color: #a9b9a9; background: #f0f4ed; }
+.example-chip span { color: #8d988a; padding-left: 7px; }
+.principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; border-top: 1px solid var(--line); padding: 31px 0 37px; }
+.principles article { padding: 0 14px; }
+.principle-number { color: #c37a34; font-family: Manrope, sans-serif; font-size: 12px; font-weight: 800; }
+.principles h2 { font-family: Manrope, sans-serif; font-size: 15px; letter-spacing: -0.3px; margin: 10px 0 8px; }
+.principles p { color: var(--muted); font-size: 12px; line-height: 1.65; margin: 0; }
+.footer { border-top: 1px solid var(--line); min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 15px; color: #898b82; font-size: 11px; }
+@media (max-width: 680px) {
+  .page-shell { padding: 0 18px; }
+  .topbar { height: 70px; }
+  .status-pill { font-size: 10px; padding: 7px 9px; }
+  .hero { margin: 56px auto 48px; }
+  h1 { letter-spacing: -1.7px; }
+  .hero-copy { font-size: 14px; }
+  .question-card { padding: 17px; }
+  .principles { grid-template-columns: 1fr; gap: 22px; }
+  .principles article { padding: 0; }
+  .footer { align-items: flex-start; flex-direction: column; justify-content: center; padding: 15px 0; }
+}
