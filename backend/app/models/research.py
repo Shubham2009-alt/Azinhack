@@ -21,6 +21,8 @@ class ResearchRun(Base):
     __table_args__ = (CheckConstraint("progress >= 0 AND progress <= 100", name="ck_run_progress"), Index("ix_run_status_created", "status", "created_at"))
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     question: Mapped[str] = mapped_column(Text, nullable=False)
+    year_min: Mapped[int | None] = mapped_column(nullable=True)
+    year_max: Mapped[int | None] = mapped_column(nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="queued")
     stage: Mapped[str] = mapped_column(String(80), nullable=False, default="queued")
     progress: Mapped[int] = mapped_column(nullable=False, default=0)
