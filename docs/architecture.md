@@ -1,7 +1,7 @@
 # ResearchPilot AI — Architecture
 
 ## System boundaries
-The MVP is a single-instance application for a controlled hackathon demo. It uses React/Vite/TypeScript for the UI, FastAPI/Pydantic for the API, SQLAlchemy/Alembic with SQLite for persistence, TinyFish for live-web source discovery/retrieval, and a configurable LLM provider for structured research analysis.
+The MVP is a single-instance application for a controlled hackathon demo. It uses React/Vite/TypeScript for the UI, FastAPI/Pydantic for the API, SQLAlchemy/Alembic with SQLite for persistence, TinyFish for live-web source discovery/retrieval and evidence-validated claim extraction, and a configurable LLM provider for structured research analysis.
 
 ## End-to-end data flow
 ~~~text
