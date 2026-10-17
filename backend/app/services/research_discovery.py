@@ -171,7 +171,7 @@ def run_research_discovery(run_id: str) -> None:
             if source is not None:
                 outcomes.add(source.canonical_url)
                 source.retrieval_status = "fetch_failed"
-                source.failure_code = "FETCH_FAILED"
+                source.failure_code = failure.code or "FETCH_FAILED"
 
         for canonical_url, source in sources_by_url.items():
             if canonical_url not in outcomes and source.retrieval_status == "discovered":
