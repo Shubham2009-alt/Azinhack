@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { isCurrentRefresh, isCurrentRun } from "./runGuards.js";
 
 type Claim = { id: string; claim_text: string; claim_type: string; evidence_excerpt?: string | null; confidence_label: string; is_inference: boolean };
 type Source = { id: string; title: string; canonical_url: string; publisher?: string | null; publication_year?: number | null; authors: string[]; venue?: string | null; retrieval_status: string; failure_code?: string | null; excerpt?: string | null; claims: Claim[] };
@@ -6,7 +7,6 @@ type Run = { run_id: string; question: string; status: string; stage: string; pr
 type Report = { question: string; status: string; stage: string; progress: number; structured_sections: Record<string, unknown>; claims: Claim[]; sources: Source[]; validation_warnings: string[]; warning_summary?: string | null };
 type Node = { id: string; type: "claim" | "source"; label: string; confidence?: string | null; source_url?: string | null; excerpt?: string | null; metadata: Record<string, unknown> };
 type Edge = { source: string; target: string; type: "supports" | "contradicts" | "qualifies" | "derived_from"; rationale: string; confidence: string };
-type Graph = { nodes: Node[]; edges: Edge[]; warning_summary?: string | null };
 const examples = ["Can satellite imagery help detect river pollution?", "What limits the reliability of AI-generated medical summaries?", "How are low-cost sensors used to monitor urban air quality?"];
 const terminal = (s = "") => ["completed", "succeeded", "partial", "failed", "error"].includes(s.toLowerCase());
 const pretty = (s: string) => s.replaceAll("_", " ");
@@ -33,7 +33,7 @@ export default function App() {
         fetch("/api/research-runs/" + id), fetch("/api/research-runs/" + id + "/report"), fetch("/api/research-runs/" + id + "/graph"),
       ]);
       const [runResponse, reportResponse, graphResponse] = responses;
-      const isCurrent = () => generation === refreshGeneration.current && activeRunId.current === id;
+      const isCurrent = () => isCurrentRefresh(activeRunId.current, id, refreshGeneration.current, generation);
       if (!isCurrent()) return;
       const [nextRun, nextReport, nextGraph] = await Promise.all([
         runResponse.ok ? runResponse.json() as Promise<Run> : null,
@@ -55,9 +55,9 @@ export default function App() {
     const poll = async () => {
       try {
         const response = await fetch("/api/research-runs/" + runId);
-        if (!response.ok || cancelled || activeRunId.current !== runId) return;
+        if (!response.ok || !isCurrentRun(activeRunId.current, runId, cancelled)) return;
         const next = await response.json() as Run;
-        if (cancelled || activeRunId.current !== runId) return;
+        if (!isCurrentRun(activeRunId.current, runId, cancelled)) return;
         setRun(next);
         if (terminal(next.status)) await refresh(runId);
       } catch { /* Retry on the next poll after transient network errors. */ }
