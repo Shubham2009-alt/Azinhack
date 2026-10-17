@@ -19,18 +19,20 @@ class RequestSecurityMiddleware:
 
         async def send_with_security_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
-                headers = list(message.get("headers", []))
-                existing = {key.lower() for key, _ in headers}
-                security_headers = [
+                # Enforce our cache policy even if downstream middleware set a weaker
+                # Cache-Control header. Keep all unrelated response headers intact.
+                headers = [
+                    (key, value)
+                    for key, value in message.get("headers", [])
+                    if key.lower() != b"cache-control"
+                ]
+                headers.extend([
                     (b"x-content-type-options", b"nosniff"),
                     (b"referrer-policy", b"no-referrer"),
                     (b"cross-origin-resource-policy", b"same-site"),
                     (b"x-frame-options", b"DENY"),
-                    # Research responses may contain user queries and derived results.
-                    # Avoid browser and intermediary caches retaining API responses.
                     (b"cache-control", b"no-store"),
-                ]
-                headers.extend((key, value) for key, value in security_headers if key not in existing)
+                ])
                 message["headers"] = headers
             await send(message)
 
