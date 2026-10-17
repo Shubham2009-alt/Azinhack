@@ -18,6 +18,13 @@ It is an evidence-traceability tool for early-stage literature exploration—not
 ## MVP pipeline
 Research question → TinyFish discovery/retrieval → evidence-validated claims → cross-source comparison and tentative gaps → final cited report and evidence graph.
 
+## Research results API
+
+- `GET /api/research-runs/{run_id}/report` — report draft, claims, sources and validation warnings; partial results are included.
+- `GET /api/research-runs/{run_id}/sources` — source metadata, excerpts, retrieval status and linked claims. Full stored page text is not returned.
+- `GET /api/research-runs/{run_id}/graph` — source/claim nodes, evidence edges and persisted cross-source relationships.
+- Unknown run IDs return `404`. Candidate research gaps remain hypotheses, not proof of novelty.
+
 ## Planned stack
 - Frontend: React, Vite, TypeScript.
 - Backend: Python 3.12, FastAPI, Pydantic, HTTPX.
