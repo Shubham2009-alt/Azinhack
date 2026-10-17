@@ -8,7 +8,7 @@ It is an evidence-traceability tool for early-stage literature exploration—not
 - [x] Product requirements, behavior specification and architecture documented.
 - [x] FastAPI health, create-research-run, and run-status endpoints added.
 - [x] React/Vite/TypeScript question form connected to the create-run API.
-- [x] TinyFish academic-paper search connected to new research runs; full-page fetch and LLM analysis remain pending.
+- [x] TinyFish academic-paper search connected to new research runs, with URL normalization, duplicate suppression and safe provider errors; full-page fetch and LLM analysis remain pending.
 - [x] SQLAlchemy models and SQLite table initialization are added for research runs, sources, claims, reports and evidence-graph relationships.
 - [ ] Full orchestration, full-page retrieval, claim extraction, report generation and graph API are not implemented yet.
 
@@ -30,7 +30,7 @@ Research question → query planning → TinyFish discovery/retrieval → struct
 - `backend/app/settings.py`: environment-backed settings, including `DATABASE_URL`.
 - `backend/app/database.py`: engine, session dependency and table initialization.
 - `backend/app/models/`: research records and evidence-graph persistence models.
-- `backend/tests/`: backend tests.
+- `backend/tests/`: API, database, TinyFish adapter and source-discovery tests (authentic provider calls are mocked).
 - `frontend/src/App.tsx`: question-entry interface connected to the API; it displays the queued run ID.
 - `frontend/src/styles.css`: responsive workspace styling.
 - `docs/prd-researchpilot.md`: product requirements.
