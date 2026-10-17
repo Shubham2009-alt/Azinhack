@@ -74,7 +74,7 @@ Use 422 for invalid input, 404 for unknown run/source, 502 for an upstream failu
 
 ## 3. Data model
 - research_runs: id UUID, question, status, stage, progress, created_at, updated_at, error_code, warning summary.
-- sources: id UUID, run_id FK, canonical_url, title, publisher, published_at nullable, publication_year nullable, authors, venue, citation_count, retrieved_at, retrieval_status, content_hash, excerpt/content reference, failure_code. Unique (run_id, canonical_url).
+- sources: id UUID, run_id FK, canonical_url, title, publisher, published_at nullable, publication_year nullable, authors, venue, citation_count, retrieved_at, retrieval_status, content_hash, bounded content_text (up to 60,000 characters), excerpt, failure_code. Unique (run_id, canonical_url).
 - claims: id UUID, run_id FK, source_id FK nullable only for explicitly labelled inference, claim_text, claim_type, evidence_excerpt, confidence_label, is_inference, created_at.
 - evidence_links: id UUID, claim_id FK, source_id FK, relationship (supports|contradicts|qualifies), excerpt, rationale, confidence_label.
 - claim_relations: id UUID, from_claim_id FK, to_claim_id FK, relationship, rationale, confidence_label.
