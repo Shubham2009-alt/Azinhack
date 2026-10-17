@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -36,5 +36,14 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
-    """Create tables for the single-instance MVP; migrations can replace this later."""
+    """Create tables and apply small additive compatibility migrations for the MVP."""
     Base.metadata.create_all(bind=engine)
+
+    # create_all does not add columns to an existing table. Keep databases created
+    # before source-content storage usable without dropping collected research runs.
+    inspector = inspect(engine)
+    if "sources" in inspector.get_table_names():
+        source_columns = {column["name"] for column in inspector.get_columns("sources")}
+        if "content_text" not in source_columns:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE sources ADD COLUMN content_text TEXT"))
