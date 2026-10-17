@@ -6,5 +6,6 @@ class Base(DeclarativeBase):
 
 
 from app.models.research import Claim, Report, ResearchRun, Source
+from app.models.graph import ClaimRelation, EvidenceLink
 
-__all__ = ["Base", "Claim", "Report", "ResearchRun", "Source"]
+__all__ = ["Base", "Claim", "ClaimRelation", "EvidenceLink", "Report", "ResearchRun", "Source"]
