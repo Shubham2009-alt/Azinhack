@@ -129,3 +129,23 @@ def test_create_research_run_is_rate_limited(client: TestClient) -> None:
     assert limited.headers.get("Retry-After", "").isdigit()
     assert limited.json()["error"]["code"] == "RATE_LIMIT_EXCEEDED"
     clear_rate_limit_state()
+
+
+def test_security_headers_are_present(client: TestClient) -> None:
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["referrer-policy"] == "no-referrer"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["cross-origin-resource-policy"] == "same-site"
+
+
+def test_request_body_over_limit_is_rejected(client: TestClient) -> None:
+    response = client.post(
+        "/api/research-runs",
+        content=b"x" * (1_048_577),
+        headers={"content-type": "application/json"},
+    )
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "REQUEST_TOO_LARGE"
+    assert response.headers["x-content-type-options"] == "nosniff"
