@@ -7,6 +7,7 @@ type Run = { run_id: string; question: string; status: string; stage: string; pr
 type Report = { question: string; status: string; stage: string; progress: number; structured_sections: Record<string, unknown>; claims: Claim[]; sources: Source[]; validation_warnings: string[]; warning_summary?: string | null };
 type Node = { id: string; type: "claim" | "source"; label: string; confidence?: string | null; source_url?: string | null; excerpt?: string | null; metadata: Record<string, unknown> };
 type Edge = { source: string; target: string; type: "supports" | "contradicts" | "qualifies" | "derived_from"; rationale: string; confidence: string };
+type Graph = { nodes: Node[]; edges: Edge[]; warning_summary?: string | null };
 const examples = ["Can satellite imagery help detect river pollution?", "What limits the reliability of AI-generated medical summaries?", "How are low-cost sensors used to monitor urban air quality?"];
 const terminal = (s = "") => ["completed", "succeeded", "partial", "failed", "error"].includes(s.toLowerCase());
 const pretty = (s: string) => s.replaceAll("_", " ");
