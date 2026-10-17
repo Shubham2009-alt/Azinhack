@@ -101,8 +101,8 @@ No account system, multi-tenancy, paywall/login bypass, custom training, paper-t
 - [x] TinyFish Fetch retrieves accessible source content, stores a bounded text copy and content hash, and records per-source failures.
 - [x] Discovered sources retain original URLs, metadata and a discovered status.
 - [x] Duplicate URLs are normalized within a run.
-- [ ] Every displayed factual claim has source evidence or is labelled as inference/unsupported.
-- [ ] Malformed LLM output and invalid source references are rejected safely.
+- [x] Extracted claims are linked to stored sources and persisted only when evidence excerpts occur verbatim in retrieved source text.\n- [ ] Every displayed factual report claim has source evidence or is labelled as inference/unsupported.
+- [x] Malformed LLM output is rejected safely; claims with excerpts not found in the stored source text are discarded.\n- [ ] Cross-source claim comparison, graph edges and report-level source references are validated.
 - [ ] Contradictions include rationale and evidence; scope differences are not mislabelled.
 - [ ] Low evidence is not presented as a globally novel gap.
 - [ ] Partial, empty, timeout, rate-limit and provider-failure paths are visible.
