@@ -210,7 +210,7 @@ def run_research_analysis(run_id: str) -> None:
             f"Cross-source relations saved: {relation_count}.",
             f"Candidate research gaps saved: {len(candidate_gaps)}.",
             "These gaps are tentative and do not establish global novelty.",
-            "Final cited report rendering and graph API remain pending.",
+            "The report and graph APIs expose the available evidence; candidate gaps do not establish global novelty.",
         ]
         if warnings:
             parts.append(" ".join(warnings))
