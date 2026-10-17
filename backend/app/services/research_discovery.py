@@ -76,7 +76,7 @@ def run_research_discovery(run_id: str) -> None:
         run.progress = 35
         run.warning_summary = (
             "No academic sources were returned by the search provider; this does not establish that no prior work exists."
-            if added == 0
+            if not results
             else None
         )
         db.commit()
