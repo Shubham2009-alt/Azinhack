@@ -44,7 +44,6 @@ def run_research_discovery(run_id: str) -> None:
             db.commit()
             return
 
-        added = 0
         for result in results:
             existing = db.scalar(
                 select(Source.id).where(
@@ -69,7 +68,6 @@ def run_research_discovery(run_id: str) -> None:
                     query_provenance=[run.question],
                 )
             )
-            added += 1
 
         run.status = "awaiting_analysis"
         run.stage = "source_discovery_complete"
