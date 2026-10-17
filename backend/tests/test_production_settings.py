@@ -70,3 +70,17 @@ def test_production_rejects_non_https_llm_base_url() -> None:
 
     with pytest.raises(ValueError, match="LLM_BASE_URL must be an absolute HTTPS URL"):
         settings.validate_deployment_configuration()
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "https://user:password@api.example/v1",
+        "https://token@api.example/v1",
+    ],
+)
+def test_production_rejects_embedded_llm_base_url_credentials(base_url: str) -> None:
+    settings = production_settings(llm_base_url=base_url)
+
+    with pytest.raises(ValueError, match="LLM_BASE_URL must not include embedded credentials"):
+        settings.validate_deployment_configuration()

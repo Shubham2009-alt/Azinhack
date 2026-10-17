@@ -50,8 +50,10 @@ class Settings(BaseSettings):
                 raise ValueError("Production FRONTEND_ORIGIN must not point to localhost.")
 
         provider_url = urlsplit(self.llm_base_url.strip())
-        if provider_url.scheme != "https" or not provider_url.netloc:
+        if provider_url.scheme != "https" or not provider_url.hostname:
             raise ValueError("Production LLM_BASE_URL must be an absolute HTTPS URL.")
+        if provider_url.username or provider_url.password:
+            raise ValueError("Production LLM_BASE_URL must not include embedded credentials.")
 
     @property
     def frontend_origins(self) -> list[str]:
