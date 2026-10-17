@@ -6,19 +6,47 @@ const exampleQuestions = [
   "How are low-cost sensors used to monitor urban air quality?",
 ];
 
+type CreatedRun = { run_id: string; status: string };
+
 export default function App() {
   const [question, setQuestion] = useState("");
   const [notice, setNotice] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createdRun, setCreatedRun] = useState<CreatedRun | null>(null);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!question.trim()) {
+    const trimmedQuestion = question.trim();
+    if (!trimmedQuestion) {
       setNotice("Enter a research question to continue.");
       return;
     }
-    setNotice(
-      "The interface is ready. Research processing will be connected in the next implementation step.",
-    );
+
+    setIsSubmitting(true);
+    setNotice("");
+    setCreatedRun(null);
+    try {
+      const response = await fetch("/api/research-runs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: trimmedQuestion }),
+      });
+      if (!response.ok) {
+        if (response.status === 422) {
+          setNotice("Please enter a non-empty question of up to 1,000 characters.");
+        } else {
+          setNotice("Could not create a research run. Check that the API is running and try again.");
+        }
+        return;
+      }
+      const run = (await response.json()) as CreatedRun;
+      setCreatedRun(run);
+      setNotice("Your request has been saved. Research processing is not connected yet.");
+    } catch {
+      setNotice("Could not reach the API. Start the backend and try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -47,16 +75,26 @@ export default function App() {
             onChange={(event) => {
               setQuestion(event.target.value);
               setNotice("");
+              setCreatedRun(null);
             }}
             maxLength={1000}
             placeholder="Enter a focused scientific or technical research question…"
             rows={4}
+            disabled={isSubmitting}
           />
           <div className="form-footer">
             <span className="character-count">{question.length}/1000</span>
-            <button type="submit">Start research <span aria-hidden="true">→</span></button>
+            <button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Saving…" : "Start research"} <span aria-hidden="true">→</span>
+            </button>
           </div>
           {notice && <p className="notice" role="status">{notice}</p>}
+          {createdRun && (
+            <div className="run-result" role="status">
+              <strong>Request saved · {createdRun.status}</strong>
+              <span>Run ID: <code>{createdRun.run_id}</code></span>
+            </div>
+          )}
         </form>
 
         <div className="examples">
@@ -70,6 +108,7 @@ export default function App() {
                 onClick={() => {
                   setQuestion(example);
                   setNotice("");
+                  setCreatedRun(null);
                 }}
               >
                 {example}<span aria-hidden="true">↗</span>
