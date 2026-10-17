@@ -1,19 +1,27 @@
 # Final submission checklist
 
-## Before recording or submitting
-- [ ] Run the app locally and verify the health endpoint.
-- [ ] Configure TinyFish and LLM keys only in `backend/.env`; never commit or share the file.
-- [ ] Complete one live end-to-end research run using the procedure in [live-smoke-test.md](live-smoke-test.md).
-- [ ] Record the research question, run ID, timestamp, final status, source count, retrieved-source count, and warnings.
-- [ ] Manually inspect source URLs and evidence excerpts. Confirm excerpts match retrieved text and candidate gaps are described as tentative.
-- [ ] Capture a clean demo recording or screenshots only after verifying that the displayed evidence is real and source-linked.
-- [ ] Rehearse a short explanation of the pipeline, TinyFish's role, evidence validation, limitations, and what remains unverified.
-- [ ] Confirm the GitHub Actions checks are green on the final commit.
-- [ ] Review the repository for secrets, local databases, debug output, and unrelated files.
-- [ ] Verify the hackathon submission form requirements, team details, repository visibility, and submission deadline before submitting.
+This is the last pass before you record a demo or submit the project. The goal is simple: make sure the evidence is real, the app still works, and nothing sensitive is exposed.
 
-## Demo fallback
-If a live provider call fails, do not fabricate a successful result or present mocked tests as live evidence. Explain the limitation and show the verified implementation, passing automated checks, and the documented smoke-test procedure.
+## Before you record or submit
+
+- [ ] Start the app locally and confirm the health endpoint responds successfully
+- [ ] Keep TinyFish and LLM credentials only in `backend/.env`; never commit or share that file
+- [ ] Run one live end-to-end research flow using the steps in [live-smoke-test.md](live-smoke-test.md)
+- [ ] Write down the research question, run ID, timestamp, final status, source count, retrieved-source count, and warnings
+- [ ] Open the source URLs and check the evidence excerpts manually
+- [ ] Confirm each claim matches actual retrieved text and that candidate gaps are clearly described as tentative
+- [ ] Capture a clean demo recording or screenshots only after the evidence has been validated
+- [ ] Rehearse a short explanation of how the app works, what TinyFish does, what evidence validation means, and what remains uncertain
+- [ ] Make sure the final commit is passing CI checks
+- [ ] Review the repo for secrets, local database files, debug output, and unrelated artifacts
+- [ ] Double-check the submission form, team details, repo visibility, and deadline before submitting
+
+## If the live provider call fails
+
+Do not invent a successful result or present mocked output as if it were live evidence. If a provider fails, explain the limitation honestly and show the verified implementation, the passing automated checks, and the documented smoke-test path instead.
 
 ## Scope and claims
-ResearchPilot produces an evidence-linked report draft and tentative candidate research gaps. It does not establish global novelty or guarantee scientific correctness. State clearly whether the demo used live providers or mocked tests.
+
+ResearchPilot produces a draft, evidence-linked report and tentative candidate research gaps. It is not a guarantee of global novelty, and it is not a claim of scientific certainty.
+
+Before you present the demo, clearly say whether the run used live provider calls or mocked tests.
