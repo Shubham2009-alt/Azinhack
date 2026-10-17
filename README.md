@@ -31,6 +31,8 @@ Research question → source discovery → source retrieval → evidence validat
 
 ## Main API endpoints
 
+- `GET /api/health` — liveness check; confirms the API process is responding
+- `GET /api/health/ready` — readiness check; returns `200` only when the configured database can execute a simple query, otherwise `503`
 - `GET /api/research-runs/{run_id}/report` — report draft, source-linked claims, and warnings
 - `GET /api/research-runs/{run_id}/sources` — discovered sources, retrieval status, and linked claims
 - `GET /api/research-runs/{run_id}/graph` — nodes and relationships for the evidence graph
@@ -84,11 +86,9 @@ cp .env.example .env
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Check the app health at:
+Check liveness at `http://127.0.0.1:8000/api/health` and database readiness at `http://127.0.0.1:8000/api/health/ready`.
 
-```text
-http://127.0.0.1:8000/api/health
-```
+The liveness endpoint does not depend on database availability. Use the readiness endpoint for deployment checks that should route traffic only when the database is reachable.
 
 Run the backend tests in a second terminal:
 
