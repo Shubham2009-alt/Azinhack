@@ -7,6 +7,8 @@ class RequestSecurityMiddleware:
     """Bound request-body memory use and add baseline browser security headers."""
 
     def __init__(self, app: ASGIApp, max_body_bytes: int = 1_048_576) -> None:
+        if max_body_bytes < 0:
+            raise ValueError("max_body_bytes must be non-negative")
         self.app = app
         self.max_body_bytes = max_body_bytes
 
@@ -37,8 +39,11 @@ class RequestSecurityMiddleware:
                 return
             if message["type"] != "http.request":
                 continue
-            body.extend(message.get("body", b""))
-            if len(body) > self.max_body_bytes:
+
+            chunk = message.get("body", b"")
+            # Check before extending: a single oversized ASGI chunk must not be
+            # copied into the buffer before the limit is enforced.
+            if len(body) + len(chunk) > self.max_body_bytes:
                 payload = json.dumps({
                     "error": {
                         "code": "REQUEST_TOO_LARGE",
@@ -59,6 +64,8 @@ class RequestSecurityMiddleware:
                     "more_body": False,
                 })
                 return
+
+            body.extend(chunk)
             more_body = message.get("more_body", False)
 
         replayed = False
