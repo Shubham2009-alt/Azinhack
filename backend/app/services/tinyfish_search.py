@@ -1,3 +1,4 @@
+import ipaddress
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -44,8 +45,19 @@ def canonicalize_url(value: str) -> str | None:
     if parsed.username is not None or parsed.password is not None:
         return None
 
+    hostname = hostname.lower().rstrip(".")
+    # Search results are untrusted. Do not ask the fetch provider to visit
+    # loopback, private, link-local, or other non-public IP addresses.
+    try:
+        ip_address = ipaddress.ip_address(hostname)
+    except ValueError:
+        ip_address = None
+    if ip_address is not None and not ip_address.is_global:
+        return None
+    if hostname == "localhost" or hostname.endswith((".localhost", ".local", ".internal")):
+        return None
+
     scheme = parsed.scheme.lower()
-    hostname = hostname.lower()
     if ":" in hostname and not hostname.startswith("["):
         hostname = f"[{hostname}]"
     netloc = hostname
