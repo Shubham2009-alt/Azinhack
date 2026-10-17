@@ -89,7 +89,7 @@ def test_search_deduplicates_urls_and_ignores_invalid_results(
                     {"title": "First", "url": "https://example.org/paper?utm_source=a"},
                     {"title": "Duplicate", "url": "https://EXAMPLE.org/paper#section"},
                     {"title": "Bad scheme", "url": "javascript:alert(1)"},
-                    {"title": "Missing title", "url": "https://example.org/other"},
+                    {"url": "https://example.org/other"},
                     {"title": "Second", "url": "https://example.org/second"},
                 ]
             }
