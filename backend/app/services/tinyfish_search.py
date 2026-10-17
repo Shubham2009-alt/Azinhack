@@ -84,7 +84,7 @@ def search_research_papers(
             continue
         seen_urls.add(normalized_url)
 
-        year = item.get("publication_year")
+        year = item.get("publication_year", item.get("year"))
         if not isinstance(year, int) or not 0 <= year <= 9999:
             year = None
         authors = item.get("authors")
