@@ -170,7 +170,7 @@ def health_check() -> dict[str, str]:
     return {"status": "ok", "service": "researchpilot-api"}
 
 @app.get("/api/health/ready", tags=["system"])
-def readiness_check() -> JSONResponse | dict[str, str]:
+def readiness_check() -> JSONResponse:
     """Report readiness only when the database can execute a simple query."""
     try:
         with engine.connect() as connection:
@@ -181,7 +181,10 @@ def readiness_check() -> JSONResponse | dict[str, str]:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"status": "not_ready", "service": "researchpilot-api"},
         )
-    return {"status": "ready", "service": "researchpilot-api"}
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"status": "ready", "service": "researchpilot-api"},
+    )
 
 
 @app.post(
