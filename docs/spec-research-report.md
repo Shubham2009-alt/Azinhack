@@ -100,7 +100,7 @@ No account system, multi-tenancy, paywall/login bypass, custom training, paper-t
 - [x] TinyFish Search academic-paper discovery is called in configured live mode.
 - [ ] TinyFish Fetch retrieves full accessible source content.
 - [x] Discovered sources retain original URLs, metadata and a discovered status.
-- [ ] Duplicate URLs are normalized within a run.
+- [x] Duplicate URLs are normalized within a run.
 - [ ] Every displayed factual claim has source evidence or is labelled as inference/unsupported.
 - [ ] Malformed LLM output and invalid source references are rejected safely.
 - [ ] Contradictions include rationale and evidence; scope differences are not mislabelled.
