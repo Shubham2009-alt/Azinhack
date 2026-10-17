@@ -6,10 +6,10 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, s
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from app.database import get_db, init_db
+from app.database import engine, get_db, init_db
 from app.models import Claim, ClaimRelation, Report, ResearchRun, Source
 from app.rate_limit import enforce_create_run_rate_limit
 from app.security import RequestSecurityMiddleware
@@ -168,6 +168,20 @@ def _source_response(source: Source, claims: list[Claim] | None = None) -> Resea
 def health_check() -> dict[str, str]:
     """Return application liveness without exposing configuration or credentials."""
     return {"status": "ok", "service": "researchpilot-api"}
+
+@app.get("/api/health/ready", tags=["system"])
+def readiness_check() -> JSONResponse | dict[str, str]:
+    """Report readiness only when the database can execute a simple query."""
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        logger.warning("Database readiness check failed", exc_info=True)
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"status": "not_ready", "service": "researchpilot-api"},
+        )
+    return {"status": "ready", "service": "researchpilot-api"}
 
 
 @app.post(
