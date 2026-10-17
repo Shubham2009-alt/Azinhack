@@ -162,3 +162,59 @@ def test_fetch_canonicalizes_and_deduplicates_urls(monkeypatch: pytest.MonkeyPat
     )
 
     assert captured["urls"] == ["https://example.org/paper?id=7"]
+
+
+def test_fetch_ignores_unrequested_and_duplicate_provider_results(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(tinyfish_fetch.settings, "tinyfish_api_key", "test-key")
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self) -> dict:
+            return {
+                "results": [
+                    {"url": "https://example.org/paper", "text": "first"},
+                    {"url": "https://example.org/paper", "text": "duplicate"},
+                    {"url": "https://unrequested.example/private", "text": "unexpected"},
+                    {"url": "http://127.0.0.1/admin", "text": "unsafe"},
+                ],
+                "errors": [
+                    {"url": "https://unrequested.example/private", "error": "unexpected"},
+                    {"url": "https://example.org/paper", "error": "also_failed"},
+                ],
+            }
+
+    monkeypatch.setattr(tinyfish_fetch.httpx, "post", lambda *args, **kwargs: FakeResponse())
+    result = fetch_pages(["https://example.org/paper"], purpose="Fetch evidence")
+
+    assert len(result.results) == 1
+    assert result.results[0].url == "https://example.org/paper"
+    assert result.results[0].text == "first"
+    assert len(result.errors) == 1
+    assert result.errors[0].url == "https://example.org/paper"
+
+
+def test_fetch_discards_unsafe_final_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tinyfish_fetch.settings, "tinyfish_api_key", "test-key")
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self) -> dict:
+            return {
+                "results": [{
+                    "url": "https://example.org/paper",
+                    "final_url": "http://127.0.0.1/admin",
+                    "text": "paper text",
+                }],
+                "errors": [],
+            }
+
+    monkeypatch.setattr(tinyfish_fetch.httpx, "post", lambda *args, **kwargs: FakeResponse())
+    result = fetch_pages(["https://example.org/paper"], purpose="Fetch evidence")
+
+    assert result.results[0].final_url is None
