@@ -1,7 +1,10 @@
 from sqlalchemy import delete, select
 
 from app.database import SessionLocal
-from app.models import Claim, ResearchRun, Source
+from app.models import Claim, ClaimRelation, Report, ResearchRun, Source
+from app.services.comparison_gap_analysis import (
+    compare_claims_and_identify_gaps,
+)
 from app.services.llm_analysis import (
     AnalysisConfigurationError,
     AnalysisProviderError,
@@ -10,7 +13,7 @@ from app.services.llm_analysis import (
 
 
 def run_research_analysis(run_id: str) -> None:
-    """Extract claims from retrieved pages and persist only source-validated evidence."""
+    """Extract source-grounded claims, then compare claims across sources."""
     with SessionLocal() as db:
         run = db.get(ResearchRun, run_id)
         if run is None:
@@ -37,7 +40,13 @@ def run_research_analysis(run_id: str) -> None:
         run.progress = 65
         db.commit()
 
-        # A retry replaces this run's previous extraction rather than duplicating claims.
+        claim_ids = select(Claim.id).where(Claim.run_id == run_id)
+        db.execute(
+            delete(ClaimRelation).where(
+                (ClaimRelation.from_claim_id.in_(claim_ids))
+                | (ClaimRelation.to_claim_id.in_(claim_ids))
+            )
+        )
         db.execute(delete(Claim).where(Claim.run_id == run_id))
         db.commit()
 
@@ -60,7 +69,6 @@ def run_research_analysis(run_id: str) -> None:
                 continue
 
             for item in claims:
-                # Defence in depth: excerpts must remain verbatim in the stored source text.
                 if item.evidence_excerpt not in (source.content_text or ""):
                     continue
                 db.add(
@@ -77,23 +85,134 @@ def run_research_analysis(run_id: str) -> None:
                 extracted_count += 1
             db.commit()
 
-        run.progress = 85
-        run.stage = "claim_extraction_complete"
-        if extracted_count and not warnings:
-            run.status = "partial"
-            run.warning_summary = (
-                "Source-grounded claims were extracted. Cross-source comparison, candidate-gap analysis, "
-                "final report generation and graph API are not implemented yet."
+        persisted_claims = list(
+            db.scalars(
+                select(Claim).where(Claim.run_id == run_id).order_by(Claim.created_at, Claim.id)
             )
-        elif extracted_count:
-            run.status = "partial"
-            run.warning_summary = " ".join(warnings) + (
-                f" Validated claims saved: {extracted_count}. "
-                "Comparison, gap analysis and report generation remain pending."
+        )
+        source_by_id = {source.id: source for source in sources}
+        comparison_payload: list[dict[str, str | None]] = []
+        for claim in persisted_claims:
+            source = source_by_id.get(claim.source_id or "")
+            comparison_payload.append(
+                {
+                    "id": claim.id,
+                    "source_id": claim.source_id,
+                    "claim_text": claim.claim_text[:2000],
+                    "evidence_excerpt": (claim.evidence_excerpt or "")[:1200],
+                    "claim_type": claim.claim_type,
+                    "confidence_label": claim.confidence_label,
+                    "source_title": source.title[:500] if source else None,
+                    "source_url": source.canonical_url if source else None,
+                }
             )
-        else:
-            run.status = "partial"
-            run.warning_summary = " ".join(warnings) if warnings else (
-                "No claims passed evidence validation. This is not evidence that no relevant findings exist."
-            )
+
+        comparison_result = None
+        if persisted_claims:
+            run.stage = "cross_source_comparison"
+            run.progress = 88
+            db.commit()
+            try:
+                comparison_result = compare_claims_and_identify_gaps(
+                    question=run.question,
+                    claims=comparison_payload,
+                )
+            except AnalysisConfigurationError:
+                warnings.append("Cross-source comparison was skipped because LLM configuration is incomplete.")
+            except AnalysisProviderError:
+                warnings.append("Cross-source comparison could not be validated; extracted claims were retained.")
+
+        relation_count = 0
+        candidate_gaps: list[dict[str, object]] = []
+        comparison_sections: list[dict[str, object]] = []
+        if comparison_result is not None:
+            valid_claims = {claim.id: claim for claim in persisted_claims}
+            seen_relations: set[tuple[str, str, str]] = set()
+            for proposed in comparison_result.relations:
+                claim_a = valid_claims.get(proposed.claim_a_id)
+                claim_b = valid_claims.get(proposed.claim_b_id)
+                if (
+                    claim_a is None
+                    or claim_b is None
+                    or claim_a.id == claim_b.id
+                    or claim_a.source_id is None
+                    or claim_b.source_id is None
+                    or claim_a.source_id == claim_b.source_id
+                ):
+                    continue
+                pair = tuple(sorted((claim_a.id, claim_b.id))) + (proposed.relationship,)
+                if pair in seen_relations:
+                    continue
+                seen_relations.add(pair)
+                db.add(
+                    ClaimRelation(
+                        from_claim_id=claim_a.id,
+                        to_claim_id=claim_b.id,
+                        relationship=proposed.relationship,
+                        rationale=proposed.rationale,
+                        confidence_label=proposed.confidence_label,
+                    )
+                )
+                relation_count += 1
+                comparison_sections.append(
+                    {
+                        "claim_a_id": claim_a.id,
+                        "claim_b_id": claim_b.id,
+                        "relationship": proposed.relationship,
+                        "rationale": proposed.rationale,
+                        "confidence_label": proposed.confidence_label,
+                    }
+                )
+
+            for gap in comparison_result.candidate_gaps:
+                basis_ids = list(
+                    dict.fromkeys(
+                        claim_id for claim_id in gap.basis_claim_ids if claim_id in valid_claims
+                    )
+                )
+                if not basis_ids:
+                    continue
+                candidate_gaps.append(
+                    {
+                        "title": gap.title,
+                        "description": gap.description,
+                        "evidence_level": gap.evidence_level,
+                        "basis_claim_ids": basis_ids,
+                        "rationale": gap.rationale,
+                        "is_confirmed_novelty": False,
+                    }
+                )
+            db.commit()
+
+        report = db.scalar(select(Report).where(Report.run_id == run_id))
+        if report is None:
+            report = Report(run_id=run_id)
+            db.add(report)
+        report.structured_sections = {
+            "analysis_stage": "cross_source_analysis_draft",
+            "research_question": run.question,
+            "cross_source_comparisons": comparison_sections,
+            "candidate_research_gaps": candidate_gaps,
+            "limitations": [
+                "Candidate gaps are hypotheses for further literature review, not proof of novelty.",
+                "Only claims extracted from accessible retrieved pages were considered.",
+                "Comparison quality depends on source coverage and model output.",
+            ],
+        }
+        report.validation_warnings = list(warnings)
+        db.commit()
+
+        run.progress = 92
+        run.stage = "cross_source_analysis_complete"
+        run.status = "partial"
+        parts = [
+            f"Validated source-grounded claims: {extracted_count}.",
+            f"Cross-source relations saved: {relation_count}.",
+            f"Candidate research gaps saved: {len(candidate_gaps)}.",
+            "These gaps are tentative and do not establish global novelty.",
+            "Final cited report rendering and graph API remain pending.",
+        ]
+        if warnings:
+            parts.append(" ".join(warnings))
+        run.warning_summary = " ".join(parts)
         db.commit()
