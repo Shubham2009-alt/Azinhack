@@ -8,7 +8,7 @@ type Node = { id: string; type: "claim" | "source"; label: string; confidence?: 
 type Edge = { source: string; target: string; type: "supports" | "contradicts" | "qualifies" | "derived_from"; rationale: string; confidence: string };
 type Graph = { nodes: Node[]; edges: Edge[]; warning_summary?: string | null };
 const examples = ["Can satellite imagery help detect river pollution?", "What limits the reliability of AI-generated medical summaries?", "How are low-cost sensors used to monitor urban air quality?"];
-const terminal = (s = "") => ["completed", "partial", "failed", "error"].includes(s.toLowerCase());
+const terminal = (s = "") => ["completed", "succeeded", "partial", "failed", "error"].includes(s.toLowerCase());
 const pretty = (s: string) => s.replaceAll("_", " ");
 
 export default function App() {
