@@ -26,13 +26,15 @@ class RequestSecurityMiddleware:
                     for key, value in message.get("headers", [])
                     if key.lower() != b"cache-control"
                 ]
-                headers.extend([
+                existing = {key.lower() for key, _ in headers}
+                security_headers = [
                     (b"x-content-type-options", b"nosniff"),
                     (b"referrer-policy", b"no-referrer"),
                     (b"cross-origin-resource-policy", b"same-site"),
                     (b"x-frame-options", b"DENY"),
                     (b"cache-control", b"no-store"),
-                ])
+                ]
+                headers.extend((key, value) for key, value in security_headers if key not in existing)
                 message["headers"] = headers
             await send(message)
 
