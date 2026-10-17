@@ -8,7 +8,7 @@ It is an evidence-traceability tool for early-stage literature exploration—not
 - [x] Product requirements, behavior specification and architecture documented.
 - [x] FastAPI health, create-research-run, and run-status endpoints added.
 - [x] React/Vite/TypeScript question form connected to the create-run API.
-- [ ] TinyFish discovery/retrieval and LLM analysis are not connected yet.
+- [x] TinyFish academic-paper search connected to new research runs; full-page fetch and LLM analysis remain pending.
 - [x] SQLAlchemy models and SQLite table initialization are added for research runs, sources, claims, reports and evidence-graph relationships.
 - [ ] Research orchestration, live provider integration and report generation are not implemented yet.
 
@@ -19,12 +19,14 @@ Research question → query planning → TinyFish discovery/retrieval → struct
 - Frontend: React, Vite, TypeScript.
 - Backend: Python 3.12, FastAPI, Pydantic, HTTPX.
 - Analysis: configurable LLM API with structured output and deterministic validation.
-- Research discovery: TinyFish Search and Fetch integration, subject to current official API contract verification.
+- Research discovery: TinyFish Search API (`research_paper` domain type); TinyFish Fetch and LLM analysis are follow-up steps.
 - Persistence: SQLAlchemy 2.x, SQLite (Alembic migrations remain a follow-up).
 - Quality: pytest and Ruff; frontend ESLint and TypeScript build.
 
 ## Repository map
-- `backend/app/main.py`: FastAPI health endpoint, `POST /api/research-runs`, and `GET /api/research-runs/{run_id}`.
+- `backend/app/main.py`: FastAPI health, create-run and run-status endpoints; new runs start source discovery in a FastAPI background task.
+- `backend/app/services/tinyfish_search.py`: TinyFish academic search client and response normalization.
+- `backend/app/services/research_discovery.py`: source persistence and run-state updates.
 - `backend/app/settings.py`: environment-backed settings, including `DATABASE_URL`.
 - `backend/app/database.py`: engine, session dependency and table initialization.
 - `backend/app/models/`: research records and evidence-graph persistence models.
@@ -83,10 +85,10 @@ npm run build
 npm run lint
 ```
 
-The frontend submits questions to the API and displays the saved run ID. Runs remain queued until the research orchestration is implemented; this step does not yet search sources or generate reports.
+The frontend submits questions to the API and displays the saved run ID. When `TINYFISH_API_KEY` is configured on the backend, a background task searches academic papers and stores source metadata. Without a key, the run fails with a clear configuration status. Full-page source retrieval, claim extraction, LLM analysis, report generation and graph retrieval are not implemented yet.
 
 ## Environment and security
-The backend reads optional TinyFish and LLM configuration from environment variables. The current API does not call either provider yet. Use real credentials only in a local, ignored `.env` file or the deployment secret manager. Never commit API keys, tokens or real environment files. Provider integration will be added after verifying current official API contracts.
+The backend reads optional TinyFish and LLM configuration from environment variables. TinyFish is called by the backend source-discovery service; LLM configuration is reserved for a later step. Use real credentials only in a local, ignored `.env` file or the deployment secret manager. Never commit API keys, tokens or real environment files. Provider integration will be added after verifying current official API contracts.
 
 ## Evidence integrity
 - Preserve original source URLs and excerpts supporting claims.
