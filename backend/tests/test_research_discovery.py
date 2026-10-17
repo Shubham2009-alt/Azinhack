@@ -81,6 +81,7 @@ def test_discovery_fetches_and_persists_source_content(
         ),
     )
 
+    monkeypatch.setattr(research_discovery, "run_research_analysis", lambda _run_id: None)
     research_discovery.run_research_discovery(run_id)
 
     with discovery_db() as db:
