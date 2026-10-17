@@ -75,13 +75,14 @@ def search_research_papers(
     limit: int = 10,
 ) -> list[PaperSearchResult]:
     """Search academic literature using TinyFish's documented Search API."""
-    api_key = settings.tinyfish_api_key.strip()
-    if not api_key:
-        raise TinyFishConfigurationError("TinyFish API key is not configured.")
     if not query.strip():
         raise ValueError("query must not be blank")
     if year_min is not None and year_max is not None and year_min > year_max:
         raise ValueError("year_min must be less than or equal to year_max")
+
+    api_key = settings.tinyfish_api_key.strip()
+    if not api_key:
+        raise TinyFishConfigurationError("TinyFish API key is not configured.")
 
     params: dict[str, Any] = {
         "query": query.strip(),
