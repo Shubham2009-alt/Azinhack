@@ -211,6 +211,7 @@ def test_per_url_fetch_failure_does_not_discard_other_sources(
         ),
     )
 
+    monkeypatch.setattr(research_discovery, "run_research_analysis", lambda _run_id: None)
     research_discovery.run_research_discovery(run_id)
 
     with discovery_db() as db:
