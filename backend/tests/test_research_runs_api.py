@@ -12,7 +12,7 @@ from app.models import Base
 
 
 @pytest.fixture()
-def client() -> Generator[TestClient, None, None]:
+def client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]:
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -32,6 +32,7 @@ def client() -> Generator[TestClient, None, None]:
             yield session
 
     app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr("app.main.run_research_discovery", lambda _run_id: None)
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
