@@ -52,6 +52,7 @@ class Source(Base):
     venue: Mapped[str | None] = mapped_column(String(500))
     citation_count: Mapped[int | None] = mapped_column(nullable=True)
     excerpt: Mapped[str | None] = mapped_column(Text)
+    content_text: Mapped[str | None] = mapped_column(Text)
     failure_code: Mapped[str | None] = mapped_column(String(80))
     query_provenance: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     run: Mapped[ResearchRun] = relationship(back_populates="sources")
