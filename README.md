@@ -9,7 +9,8 @@ It is an evidence-traceability tool for early-stage literature exploration—not
 - [x] FastAPI backend skeleton and health endpoint added.
 - [x] React/Vite/TypeScript research-question interface added.
 - [ ] TinyFish discovery/retrieval and LLM analysis are not connected yet.
-- [ ] Research runs, database persistence, evidence reports and graph are not implemented yet.
+- [x] SQLAlchemy models and SQLite table initialization are added for research runs, sources, claims, reports and evidence-graph relationships.
+- [ ] Research orchestration, live provider integration and report generation are not implemented yet.
 
 ## MVP pipeline
 Research question → query planning → TinyFish discovery/retrieval → structured extraction → evidence validation → claim comparison → candidate-gap analysis → cited report and evidence graph.
@@ -19,12 +20,14 @@ Research question → query planning → TinyFish discovery/retrieval → struct
 - Backend: Python 3.12, FastAPI, Pydantic, HTTPX.
 - Analysis: configurable LLM API with structured output and deterministic validation.
 - Research discovery: TinyFish Search and Fetch integration, subject to current official API contract verification.
-- Persistence: SQLAlchemy, Alembic, SQLite.
+- Persistence: SQLAlchemy 2.x, SQLite (Alembic migrations remain a follow-up).
 - Quality: pytest and Ruff; frontend ESLint and TypeScript build.
 
 ## Repository map
 - `backend/app/main.py`: FastAPI app and `GET /api/health`.
-- `backend/app/settings.py`: environment-backed settings.
+- `backend/app/settings.py`: environment-backed settings, including `DATABASE_URL`.
+- `backend/app/database.py`: engine, session dependency and table initialization.
+- `backend/app/models/`: research records and evidence-graph persistence models.
 - `backend/tests/`: backend tests.
 - `frontend/src/App.tsx`: initial question-entry interface.
 - `frontend/src/styles.css`: responsive workspace styling.
