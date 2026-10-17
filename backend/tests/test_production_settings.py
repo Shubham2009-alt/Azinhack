@@ -84,3 +84,22 @@ def test_production_rejects_embedded_llm_base_url_credentials(base_url: str) -> 
 
     with pytest.raises(ValueError, match="LLM_BASE_URL must not include embedded credentials"):
         settings.validate_deployment_configuration()
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "https://api.example/v1?token=accidental",
+        "https://api.example/v1#section",
+    ],
+)
+def test_production_rejects_query_strings_and_fragments_in_llm_base_url(
+    base_url: str,
+) -> None:
+    settings = production_settings(llm_base_url=base_url)
+
+    with pytest.raises(
+        ValueError,
+        match="LLM_BASE_URL must not include a query string or fragment",
+    ):
+        settings.validate_deployment_configuration()
