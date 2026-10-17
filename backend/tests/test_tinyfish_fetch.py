@@ -108,3 +108,57 @@ def test_fetch_caps_batch_and_deduplicates_urls(monkeypatch: pytest.MonkeyPatch)
     fetch_pages(urls, purpose="Fetch evidence")
     assert len(captured["urls"]) == 10
     assert len(set(captured["urls"])) == 10
+
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "javascript:alert(1)",
+        "https://user:password@example.org/paper",
+        "http://localhost/admin",
+        "http://127.0.0.1/admin",
+        "http://192.168.1.10/paper",
+        "http://[::1]/admin",
+        "http://metadata.internal/latest",
+    ],
+)
+def test_fetch_rejects_unsafe_urls_before_provider_call(
+    monkeypatch: pytest.MonkeyPatch, url: str
+) -> None:
+    monkeypatch.setattr(tinyfish_fetch.settings, "tinyfish_api_key", "test-key")
+    monkeypatch.setattr(
+        tinyfish_fetch.httpx,
+        "post",
+        lambda *args, **kwargs: pytest.fail("unsafe URL must not reach the provider"),
+    )
+
+    with pytest.raises(ValueError, match="safe public HTTP"):
+        fetch_pages([url], purpose="Fetch evidence")
+
+
+def test_fetch_canonicalizes_and_deduplicates_urls(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tinyfish_fetch.settings, "tinyfish_api_key", "test-key")
+    captured: dict[str, list[str]] = {}
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self) -> dict:
+            return {"results": [], "errors": []}
+
+    def fake_post(url, *, headers, json, timeout):
+        captured["urls"] = json["urls"]
+        return FakeResponse()
+
+    monkeypatch.setattr(tinyfish_fetch.httpx, "post", fake_post)
+    fetch_pages(
+        [
+            "HTTPS://Example.org:443/paper?utm_source=mail&id=7#abstract",
+            "https://example.org/paper?id=7",
+        ],
+        purpose="Fetch evidence",
+    )
+
+    assert captured["urls"] == ["https://example.org/paper?id=7"]
