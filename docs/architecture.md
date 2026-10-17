@@ -52,10 +52,10 @@ TinyFish Search -> normalize/deduplicate sources -> TinyFish Fetch
 - tests/: unit, API, provider-mock and end-to-end tests.
 - docs/: requirements, behavior contracts and project decisions.
 
-The architecture above describes the target design. Current implementation has a FastAPI app, SQLAlchemy models, a TinyFish academic-search adapter, and a background source-discovery service; query planning, page fetching, LLM analysis, report generation and graph endpoints remain future steps.
+The architecture above describes the target design. Current implementation has a FastAPI app, SQLAlchemy models, TinyFish Search and Fetch adapters, and a background source-discovery/retrieval service; query planning, LLM analysis, report generation and graph endpoints remain future steps.
 
 ## Integration rules
-- TinyFish Search currently uses the documented GET https://api.search.tinyfish.ai endpoint and X-API-Key authentication. Keep provider calls behind one adapter so endpoint or response changes do not leak into services. TinyFish Fetch remains unimplemented.
+- TinyFish Search uses GET https://api.search.tinyfish.ai and Fetch uses POST https://api.fetch.tinyfish.ai; both require X-API-Key authentication. Keep provider calls behind separate adapters so endpoint or response changes do not leak into services. Fetch stores at most 60,000 characters per source in the initial MVP.
 - Use environment variables for TinyFish credentials, LLM API key, model and optional base URL. Never put secrets in source, frontend environment variables, committed settings, fixtures or logs.
 - Set explicit HTTP timeouts and bounded retries only for retry-safe operations. Handle rate limits and inaccessible sources as structured source statuses.
 - Use typed, schema-constrained LLM outputs where supported. Validate source IDs, excerpts and required fields before persistence.
