@@ -26,6 +26,9 @@ class RequestSecurityMiddleware:
                     (b"referrer-policy", b"no-referrer"),
                     (b"cross-origin-resource-policy", b"same-site"),
                     (b"x-frame-options", b"DENY"),
+                    # Research responses may contain user queries and derived results.
+                    # Avoid browser and intermediary caches retaining API responses.
+                    (b"cache-control", b"no-store"),
                 ]
                 headers.extend((key, value) for key, value in security_headers if key not in existing)
                 message["headers"] = headers
