@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import httpx
 
 from app.settings import settings
 
 SEARCH_API_URL = "https://api.search.tinyfish.ai"
+TRACKING_PARAMS = {"fbclid", "gclid", "mc_cid", "mc_eid"}
 
 
 class TinyFishConfigurationError(RuntimeError):
@@ -29,6 +30,43 @@ class PaperSearchResult:
     citation_count: int | None = None
 
 
+def canonicalize_url(value: str) -> str | None:
+    """Normalize safe HTTP(S) URLs and remove common tracking parameters."""
+    try:
+        parsed = urlsplit(value.strip())
+        hostname = parsed.hostname
+        port = parsed.port
+    except (AttributeError, ValueError):
+        return None
+
+    if parsed.scheme.lower() not in {"http", "https"} or not hostname:
+        return None
+    if parsed.username is not None or parsed.password is not None:
+        return None
+
+    scheme = parsed.scheme.lower()
+    hostname = hostname.lower()
+    if ":" in hostname and not hostname.startswith("["):
+        hostname = f"[{hostname}]"
+    netloc = hostname
+    if port is not None and not (
+        (scheme == "http" and port == 80) or (scheme == "https" and port == 443)
+    ):
+        netloc = f"{netloc}:{port}"
+
+    query_items = []
+    for key, item_value in parse_qsl(parsed.query, keep_blank_values=True):
+        lowered_key = key.lower()
+        if lowered_key.startswith("utm_") or lowered_key in TRACKING_PARAMS:
+            continue
+        query_items.append((key, item_value))
+    query_items.sort()
+
+    return urlunsplit(
+        (scheme, netloc, parsed.path or "/", urlencode(query_items, doseq=True), "")
+    )
+
+
 def search_research_papers(
     query: str,
     *,
@@ -40,9 +78,13 @@ def search_research_papers(
     api_key = settings.tinyfish_api_key.strip()
     if not api_key:
         raise TinyFishConfigurationError("TinyFish API key is not configured.")
+    if not query.strip():
+        raise ValueError("query must not be blank")
+    if year_min is not None and year_max is not None and year_min > year_max:
+        raise ValueError("year_min must be less than or equal to year_max")
 
     params: dict[str, Any] = {
-        "query": query,
+        "query": query.strip(),
         "domain_type": "research_paper",
         "page": 0,
     }
@@ -69,23 +111,23 @@ def search_research_papers(
 
     results: list[PaperSearchResult] = []
     seen_urls: set[str] = set()
+    result_limit = max(1, min(limit, 10))
     for item in raw_results:
         if not isinstance(item, dict):
             continue
-        url = item.get("url")
+        raw_url = item.get("url")
         title = item.get("title")
-        if not isinstance(url, str) or not isinstance(title, str) or not title.strip():
+        if not isinstance(raw_url, str) or not isinstance(title, str) or not title.strip():
             continue
-        parsed = urlparse(url)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-            continue
-        normalized_url = url.strip()
-        if normalized_url in seen_urls:
+        normalized_url = canonicalize_url(raw_url)
+        if normalized_url is None or normalized_url in seen_urls:
             continue
         seen_urls.add(normalized_url)
 
-        year = item.get("publication_year", item.get("year"))
-        if not isinstance(year, int) or not 0 <= year <= 9999:
+        year = item.get("publication_year")
+        if year is None:
+            year = item.get("year")
+        if not isinstance(year, int) or isinstance(year, bool) or not 0 <= year <= 9999:
             year = None
         authors = item.get("authors")
         if not isinstance(authors, list):
@@ -94,7 +136,11 @@ def search_research_papers(
             authors = [author for author in authors if isinstance(author, str)]
 
         citation_count = item.get("citation_count")
-        if not isinstance(citation_count, int) or citation_count < 0:
+        if (
+            not isinstance(citation_count, int)
+            or isinstance(citation_count, bool)
+            or citation_count < 0
+        ):
             citation_count = None
 
         results.append(
@@ -109,7 +155,7 @@ def search_research_papers(
                 citation_count=citation_count,
             )
         )
-        if len(results) >= max(1, min(limit, 10)):
+        if len(results) >= result_limit:
             break
 
     return results
