@@ -82,3 +82,33 @@ def test_invalid_research_request_is_rejected(client: TestClient, payload: dict)
 def test_unknown_run_returns_404(client: TestClient) -> None:
     response = client.get("/api/research-runs/00000000-0000-0000-0000-000000000000")
     assert response.status_code == 404
+    payload = response.json()
+    assert payload["error"]["code"] == "RESEARCH_RUN_NOT_FOUND"
+    assert payload["error"]["message"] == "No research run exists for this ID."
+    assert "request_id" in payload["error"]
+
+
+def test_validation_errors_are_structured_and_safe(client: TestClient) -> None:
+    response = client.post(
+        "/api/research-runs",
+        json={"question": "   ", "year_min": 2025, "year_max": 2018},
+    )
+    assert response.status_code == 422
+    payload = response.json()
+    assert payload["error"]["code"] == "VALIDATION_ERROR"
+    assert payload["error"]["message"] == "The request payload is invalid."
+    assert payload["error"]["details"]
+    assert "question" in str(payload["error"]["details"]) or "year_min" in str(payload["error"]["details"])
+
+
+def test_unexpected_errors_are_sanitized(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def explode(*_args, **_kwargs):
+        raise RuntimeError("super-secret-debug-info")
+
+    monkeypatch.setattr("app.main._get_run_or_404", explode)
+    response = client.get("/api/research-runs/00000000-0000-0000-0000-000000000001")
+    assert response.status_code == 500
+    payload = response.json()
+    assert payload["error"]["code"] == "INTERNAL_SERVER_ERROR"
+    assert "super-secret-debug-info" not in payload["error"]["message"]
+    assert "request_id" in payload["error"]

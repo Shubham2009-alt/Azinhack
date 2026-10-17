@@ -1,7 +1,11 @@
+import logging
 from contextlib import asynccontextmanager
+from uuid import uuid4
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -29,6 +33,23 @@ async def lifespan(_app: FastAPI):
     yield
 
 
+logger = logging.getLogger("researchpilot.api")
+
+
+def _error_payload(code: str, message: str, *, details: list[dict[str, str]] | None = None, request_id: str | None = None) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "error": {
+            "code": code,
+            "message": message,
+        }
+    }
+    if details is not None:
+        payload["error"] = {**payload["error"], "details": details}
+    if request_id is not None:
+        payload["error"] = {**payload["error"], "request_id": request_id}
+    return payload
+
+
 app = FastAPI(
     title="ResearchPilot API",
     description="Evidence-traceable research exploration API.",
@@ -38,11 +59,64 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
+    allow_origins=settings.frontend_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
+    details: list[dict[str, str]] = []
+    for error in exc.errors():
+        location = [str(part) for part in error.get("loc", []) if part not in {"body", "query", "path"}]
+        field = location[-1] if location else "body"
+        details.append({"field": field, "reason": str(error.get("msg", "Invalid request value."))})
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content=_error_payload(
+            "VALIDATION_ERROR",
+            "The request payload is invalid.",
+            details=details,
+            request_id=uuid4().hex,
+        ),
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(_request: Request, exc: HTTPException) -> JSONResponse:
+    detail = exc.detail
+    if isinstance(detail, dict):
+        code = str(detail.get("code", "HTTP_ERROR"))
+        message = str(detail.get("message", "Request failed."))
+        details = detail.get("details")
+        if not isinstance(details, list):
+            details = None
+    else:
+        code = "HTTP_ERROR"
+        message = str(detail)
+        details = None
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=_error_payload(code, message, details=details if isinstance(details, list) else None, request_id=uuid4().hex),
+    )
+
+
+@app.middleware("http")
+async def unhandled_exception_middleware(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception:
+        logger.exception("Unhandled API exception")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=_error_payload(
+                "INTERNAL_SERVER_ERROR",
+                "An unexpected server error occurred.",
+                request_id=uuid4().hex,
+            ),
+        )
 
 
 def _get_run_or_404(run_id: str, db: Session) -> ResearchRun:

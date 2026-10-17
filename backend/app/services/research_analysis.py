@@ -1,4 +1,4 @@
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 
 from app.database import SessionLocal
 from app.models import Claim, ClaimRelation, Report, ResearchRun, Source
@@ -27,6 +27,12 @@ def run_research_analysis(run_id: str) -> None:
                 )
             )
         )
+        unretrieved_source_count = db.scalar(
+            select(func.count(Source.id)).where(
+                Source.run_id == run_id,
+                Source.retrieval_status != "retrieved",
+            )
+        ) or 0
         if not sources:
             run.status = "partial"
             run.stage = "analysis_skipped"
@@ -52,6 +58,10 @@ def run_research_analysis(run_id: str) -> None:
 
         extracted_count = 0
         warnings: list[str] = []
+        if unretrieved_source_count:
+            warnings.append(
+                f"{unretrieved_source_count} source(s) could not be retrieved; results may be partial."
+            )
         for source in sources:
             try:
                 claims = extract_source_claims(
@@ -204,7 +214,7 @@ def run_research_analysis(run_id: str) -> None:
 
         run.progress = 92
         run.stage = "cross_source_analysis_complete"
-        run.status = "partial"
+        run.status = "partial" if warnings else "succeeded"
         parts = [
             f"Validated source-grounded claims: {extracted_count}.",
             f"Cross-source relations saved: {relation_count}.",

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app.models import Base, Claim, ClaimRelation, Report, ResearchRun, Source
+from app.services.comparison_gap_analysis import ComparisonGapResult
 from app.services import research_analysis
 from app.services.llm_analysis import (
     AnalysisConfigurationError,
@@ -69,11 +70,16 @@ def test_persists_only_validated_source_claims(
             ),
         ],
     )
+    monkeypatch.setattr(
+        research_analysis,
+        "compare_claims_and_identify_gaps",
+        lambda **kwargs: ComparisonGapResult(relations=[], candidate_gaps=[]),
+    )
     research_analysis.run_research_analysis(run_id)
     with analysis_db() as db:
         run = db.get(ResearchRun, run_id)
         claims = list(db.scalars(select(Claim).where(Claim.run_id == run_id)))
-        assert run is not None and run.status == "partial"
+        assert run is not None and run.status == "succeeded"
         assert run.stage == "cross_source_analysis_complete"
         assert len(claims) == 1
         assert claims[0].source_id == source_id
@@ -97,6 +103,30 @@ def test_missing_llm_configuration_keeps_run_partial(
         assert run.status == "partial"
         assert "not configured" in (run.warning_summary or "")
         assert "secret" not in (run.warning_summary or "")
+
+
+def test_unretrieved_sources_keep_completed_run_partial(
+    analysis_db: Callable[[], Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id, _ = create_retrieved_run(analysis_db)
+    with analysis_db() as db:
+        db.add(
+            Source(
+                run_id=run_id,
+                canonical_url="https://example.org/unavailable",
+                title="Unavailable paper",
+                retrieval_status="fetch_failed",
+            )
+        )
+        db.commit()
+    monkeypatch.setattr(research_analysis, "extract_source_claims", lambda **kwargs: [])
+
+    research_analysis.run_research_analysis(run_id)
+
+    with analysis_db() as db:
+        run = db.get(ResearchRun, run_id)
+        assert run is not None and run.status == "partial"
+        assert "1 source(s) could not be retrieved" in (run.warning_summary or "")
 
 
 def test_persists_cross_source_relations_and_tentative_gaps(
