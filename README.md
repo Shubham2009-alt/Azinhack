@@ -108,4 +108,4 @@ The backend reads TinyFish and LLM configuration from environment variables. Con
 - Never bypass paywalls or access controls.
 
 ## Verification status
-A GitHub Actions workflow has been added for backend tests/lint and frontend lint/build. The workflow result has not been confirmed, and the suite/build have not been executed in this environment. Treat verification as pending until the CI run is green.
+The GitHub Actions run [39038235810](https://github.com/Shubham2009-alt/Azinhack/actions/runs/39038235810) passed: 48 backend tests, Ruff, frontend ESLint, and the TypeScript/Vite production build. Automated tests mock external provider calls; a live TinyFish + LLM end-to-end run is still required. Follow [the live smoke-test runbook](docs/live-smoke-test.md).
