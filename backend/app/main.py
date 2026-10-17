@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db, init_db
 from app.models import Claim, ClaimRelation, Report, ResearchRun, Source
 from app.rate_limit import enforce_create_run_rate_limit
+from app.security import RequestSecurityMiddleware
 from app.schemas import (
     CreateResearchRunRequest,
     CreateResearchRunResponse,
@@ -65,6 +66,8 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
+
+app.add_middleware(RequestSecurityMiddleware, max_body_bytes=1_048_576)
 
 
 @app.exception_handler(RequestValidationError)
