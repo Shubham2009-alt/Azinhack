@@ -48,5 +48,7 @@ jobs:
         run: npm ci
       - name: Run lint
         run: npm run lint
+      - name: Run frontend regression tests
+        run: npm test
       - name: Build production bundle
         run: npm run build
