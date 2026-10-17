@@ -28,3 +28,11 @@ These checks reduce common misconfiguration risks. They do **not** add authentic
 4. Define run-sharing behavior explicitly; do not treat possession of a run ID as authorization by default.
 5. Add tests proving one user cannot read or mutate another user's runs.
 6. Define data retention, deletion, logging, and rate-limit policies, then review the deployed service.
+
+
+## Health and readiness probes
+
+- `GET /api/health` is a liveness probe. It confirms that the API process is responding and intentionally does not verify database availability.
+- `GET /api/health/ready` is a readiness probe. It executes a lightweight database query and returns `200` when the database is reachable or `503` when the check fails. The response body does not expose database exception details.
+
+Configure hosting-platform probes according to their purpose: use liveness to detect a stuck or stopped process, and readiness to decide whether the instance should receive traffic. A successful readiness check does not verify TinyFish or LLM provider availability and does not establish that a complete research run will succeed.
