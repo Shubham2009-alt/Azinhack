@@ -51,7 +51,7 @@ def create_research_run(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> CreateResearchRunResponse:
-    """Persist a validated research request; processing is added in a later step."""
+    """Persist a validated research request and schedule source discovery."""
     run = ResearchRun(
         question=payload.question.strip(),
         year_min=payload.year_min,
