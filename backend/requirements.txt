@@ -2,5 +2,6 @@ fastapi==0.115.12
 uvicorn[standard]==0.34.0
 pydantic-settings==2.8.1
 httpx==0.28.1
+SQLAlchemy==2.0.40
 pytest==8.3.5
 ruff==0.11.2
