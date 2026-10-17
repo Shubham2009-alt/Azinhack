@@ -8,9 +8,9 @@ It is an evidence-traceability tool for early-stage literature exploration—not
 - [x] Product requirements, behavior specification and architecture documented.
 - [x] FastAPI health, create-research-run, and run-status endpoints added.
 - [x] React/Vite/TypeScript question form connected to the create-run API.
-- [x] TinyFish academic-paper search connected to new research runs, with URL normalization, duplicate suppression and safe provider errors; full-page fetch and LLM analysis remain pending.
+- [x] TinyFish Search and Fetch integrated: accessible page content is persisted with a content hash; URL normalization, duplicate suppression and per-source retrieval failures are handled.
 - [x] SQLAlchemy models and SQLite table initialization are added for research runs, sources, claims, reports and evidence-graph relationships.
-- [ ] Full orchestration, full-page retrieval, claim extraction, report generation and graph API are not implemented yet.
+- [ ] LLM claim extraction, report generation and graph API are not implemented yet.
 
 ## MVP pipeline
 Research question → query planning → TinyFish discovery/retrieval → structured extraction → evidence validation → claim comparison → candidate-gap analysis → cited report and evidence graph.
@@ -19,14 +19,14 @@ Research question → query planning → TinyFish discovery/retrieval → struct
 - Frontend: React, Vite, TypeScript.
 - Backend: Python 3.12, FastAPI, Pydantic, HTTPX.
 - Analysis: configurable LLM API with structured output and deterministic validation.
-- Research discovery: TinyFish Search API (`research_paper` domain type); TinyFish Fetch and LLM analysis are follow-up steps.
+- Research discovery: TinyFish Search API (`research_paper` domain type) plus TinyFish Fetch for accessible page content; LLM analysis remains a follow-up step.
 - Persistence: SQLAlchemy 2.x, SQLite (Alembic migrations remain a follow-up).
 - Quality: pytest and Ruff; frontend ESLint and TypeScript build.
 
 ## Repository map
 - `backend/app/main.py`: FastAPI health, create-run and run-status endpoints; new runs start source discovery in a FastAPI background task.
-- `backend/app/services/tinyfish_search.py`: TinyFish academic search client and response normalization.
-- `backend/app/services/research_discovery.py`: source persistence and run-state updates.
+- `backend/app/services/tinyfish_search.py`: TinyFish academic search client and response normalization.\n- `backend/app/services/tinyfish_fetch.py`: TinyFish Fetch API client; Markdown extraction, bounded content storage and normalized errors.
+- `backend/app/services/research_discovery.py`: source persistence, full-page retrieval and run-state updates.
 - `backend/app/settings.py`: environment-backed settings, including `DATABASE_URL`.
 - `backend/app/database.py`: engine, session dependency and table initialization.
 - `backend/app/models/`: research records and evidence-graph persistence models.
@@ -85,7 +85,7 @@ npm run build
 npm run lint
 ```
 
-The frontend submits questions to the API and displays the saved run ID. When `TINYFISH_API_KEY` is configured on the backend, a background task searches academic papers and stores source metadata. Without a key, the run fails with a clear configuration status. Full-page source retrieval, claim extraction, LLM analysis, report generation and graph retrieval are not implemented yet.
+The frontend submits questions to the API and displays the saved run ID. With `TINYFISH_API_KEY` configured on the backend, a background task searches academic papers and fetches accessible page content. Source retrieval failures are stored per source and do not discard successfully fetched sources. Without a key, the run fails with a safe configuration status. Claim extraction, LLM analysis, report generation and graph retrieval are not implemented yet.
 
 ## Environment and security
 The backend reads optional TinyFish and LLM configuration from environment variables. TinyFish is called by the backend source-discovery service; LLM configuration is reserved for a later step. Use real credentials only in a local, ignored `.env` file or the deployment secret manager. Never commit API keys, tokens or real environment files. Additional provider integration will follow verification of each official API contract.
