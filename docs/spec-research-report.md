@@ -1,6 +1,6 @@
 # Specification — Research Report and Evidence Graph
 
-**Status:** Proposed; implementation must follow this spec after approval.  
+**Status:** In progress; this is the target contract and some stages remain unimplemented.  
 **Product:** ResearchPilot AI MVP.
 
 ## 1. Behavior (Given / When / Then)
@@ -48,7 +48,7 @@ Response 202 Accepted:
 Validation failure: 422 Unprocessable Entity.
 
 ### GET /api/research-runs/{run_id}
-Response 200: run_id, status (queued|running|succeeded|partial|failed), stage, progress (0–100), timestamps, source counts and safe warnings.
+Response 200: run_id, status (queued|searching|awaiting_analysis|succeeded|partial|failed), stage, progress (0–100), timestamps, source counts and safe warnings.
 
 ### GET /api/research-runs/{run_id}/report
 Response 200: run status, structured report sections, claim records, source references, confidence labels, limitations and validation warnings. Return partial report where available.
@@ -74,7 +74,7 @@ Use 422 for invalid input, 404 for unknown run/source, 502 for an upstream failu
 
 ## 3. Data model
 - research_runs: id UUID, question, status, stage, progress, created_at, updated_at, error_code, warning summary.
-- sources: id UUID, run_id FK, canonical_url, title, publisher, published_at nullable, retrieved_at, retrieval_status, content_hash, excerpt/content reference, failure_code. Unique (run_id, canonical_url).
+- sources: id UUID, run_id FK, canonical_url, title, publisher, published_at nullable, publication_year nullable, authors, venue, citation_count, retrieved_at, retrieval_status, content_hash, excerpt/content reference, failure_code. Unique (run_id, canonical_url).
 - claims: id UUID, run_id FK, source_id FK nullable only for explicitly labelled inference, claim_text, claim_type, evidence_excerpt, confidence_label, is_inference, created_at.
 - evidence_links: id UUID, claim_id FK, source_id FK, relationship (supports|contradicts|qualifies), excerpt, rationale, confidence_label.
 - claim_relations: id UUID, from_claim_id FK, to_claim_id FK, relationship, rationale, confidence_label.
@@ -95,10 +95,11 @@ Use 422 for invalid input, 404 for unknown run/source, 502 for an upstream failu
 No account system, multi-tenancy, paywall/login bypass, custom training, paper-to-code generation, global novelty guarantee, PDF/Word export, or production-scale queue in v1.
 
 ## 6. Acceptance checklist
-- [ ] Valid question creates a run and returns a run ID.
-- [ ] Invalid question/year range creates no run.
-- [ ] Live TinyFish Search and Fetch are called in configured live mode.
-- [ ] Sources retain original URLs and retrieval statuses.
+- [x] Valid question creates a run and returns a run ID.
+- [x] Invalid question/year range creates no run.
+- [x] TinyFish Search academic-paper discovery is called in configured live mode.
+- [ ] TinyFish Fetch retrieves full accessible source content.
+- [x] Discovered sources retain original URLs, metadata and a discovered status.
 - [ ] Duplicate URLs are normalized within a run.
 - [ ] Every displayed factual claim has source evidence or is labelled as inference/unsupported.
 - [ ] Malformed LLM output and invalid source references are rejected safely.
@@ -107,4 +108,4 @@ No account system, multi-tenancy, paywall/login bypass, custom training, paper-t
 - [ ] Partial, empty, timeout, rate-limit and provider-failure paths are visible.
 - [ ] Graph nodes and edges resolve to real claim/source records.
 - [ ] API errors are structured and do not leak secrets or stack traces.
-- [ ] Clean setup, tests and documented demo run are reproducible.
+- [ ] Clean setup, tests and documented demo run are reproducible; test/build commands have not yet been run in this environment.
