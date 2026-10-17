@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
+from app.models.graph import ClaimRelation, EvidenceLink
 from app.settings import settings
 
 app = FastAPI(
