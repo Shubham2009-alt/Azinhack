@@ -12,7 +12,7 @@
 - Given a valid question, when query planning completes, then record focused queries and the original question. If planning fails, mark the stage failed and explain that research could not continue.
 
 ### Discovery and retrieval
-- Given valid TinyFish credentials, when discovery runs, then query the supported TinyFish Search integration and preserve returned title, URL, date/publisher metadata when available, query provenance and retrieval status.
+- Given valid TinyFish credentials, when discovery runs, then query TinyFish Search and fetch accessible source pages with TinyFish Fetch, preserving URLs, available metadata, query provenance, extracted Markdown content and retrieval status.
 - Given duplicate canonical URLs, when results are normalized, then retain one source record per canonical URL while preserving useful query provenance.
 - Given an inaccessible, restricted, timed-out or rate-limited source, when retrieval fails, then record its failure state and continue with other sources where possible.
 - Given zero usable sources, when processing ends, then return an explicit empty/insufficient-evidence result; never invent source records.
@@ -98,7 +98,7 @@ No account system, multi-tenancy, paywall/login bypass, custom training, paper-t
 - [x] Valid question creates a run and returns a run ID.
 - [x] Invalid question/year range creates no run.
 - [x] TinyFish Search academic-paper discovery is called in configured live mode.
-- [ ] TinyFish Fetch retrieves full accessible source content.
+- [x] TinyFish Fetch retrieves accessible source content, stores a bounded text copy and content hash, and records per-source failures.
 - [x] Discovered sources retain original URLs, metadata and a discovered status.
 - [x] Duplicate URLs are normalized within a run.
 - [ ] Every displayed factual claim has source evidence or is labelled as inference/unsupported.
