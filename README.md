@@ -35,7 +35,8 @@ Research question → TinyFish discovery/retrieval → evidence-validated claims
 
 ## Repository map
 - `backend/app/main.py`: FastAPI health, run creation/status, report, source-list and evidence-graph endpoints; new runs start source discovery in a FastAPI background task.
-- `backend/app/services/tinyfish_search.py`: TinyFish academic search client and response normalization.\n- `backend/app/services/tinyfish_fetch.py`: TinyFish Fetch API client; Markdown extraction, bounded content storage and normalized errors.
+- `backend/app/services/tinyfish_search.py`: TinyFish academic search client and response normalization.
+- `backend/app/services/tinyfish_fetch.py`: TinyFish Fetch API client; Markdown extraction, bounded content storage and normalized errors.
 - `backend/app/services/research_discovery.py`: source persistence, full-page retrieval and run-state updates.
 - `backend/app/settings.py`: environment-backed settings, including `DATABASE_URL`.
 - `backend/app/database.py`: engine, session dependency and table initialization.
@@ -108,4 +109,4 @@ The backend reads TinyFish and LLM configuration from environment variables. Con
 - Never bypass paywalls or access controls.
 
 ## Verification status
-The GitHub Actions run [39038235810](https://github.com/Shubham2009-alt/Azinhack/actions/runs/39038235810) passed: 48 backend tests, Ruff, frontend ESLint, and the TypeScript/Vite production build. Automated tests mock external provider calls; a live TinyFish + LLM end-to-end run is still required. Follow [the live smoke-test runbook](docs/live-smoke-test.md).
+The latest GitHub Actions run [39039389427](https://github.com/Shubham2009-alt/Azinhack/actions/runs/39039389427) passed: 48 backend tests, Ruff, frontend ESLint, and the TypeScript/Vite production build. Automated tests mock external provider calls; a live TinyFish + LLM end-to-end run is still required. Follow [the live smoke-test runbook](docs/live-smoke-test.md).
