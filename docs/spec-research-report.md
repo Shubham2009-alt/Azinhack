@@ -1,6 +1,6 @@
 # Specification — Research Report and Evidence Graph
 
-**Status:** In progress; this is the target contract and some stages remain unimplemented.  
+**Status:** Backend report/source/graph APIs and the first frontend results workspace are implemented; runtime verification and further report polish remain.  
 **Product:** ResearchPilot AI MVP.
 
 ## 1. Behavior (Given / When / Then)
@@ -101,12 +101,14 @@ No account system, multi-tenancy, paywall/login bypass, custom training, paper-t
 - [x] TinyFish Fetch retrieves accessible source content, stores a bounded text copy and content hash, and records per-source failures.
 - [x] Discovered sources retain original URLs, metadata and a discovered status.
 - [x] Duplicate URLs are normalized within a run.
-- [x] Extracted claims are linked to stored sources and persisted only when evidence excerpts occur verbatim in retrieved source text.\n- [ ] Every displayed factual report claim has source evidence or is labelled as inference/unsupported.
+- [x] Extracted claims are linked to stored sources and persisted only when evidence excerpts occur verbatim in retrieved source text.\n- [x] Frontend report view renders extracted claims with available evidence excerpts and source links; inference claims are labelled.
+- [x] Frontend displays run progress, source cards, candidate gaps, limitations and warnings.
+- [x] Frontend graph view supports selecting source/claim nodes and inspecting relationship rationale.
 - [x] Malformed LLM output is rejected safely; claims with excerpts not found in the stored source text are discarded.\n- [x] Cross-source relation IDs are validated before persistence; report/source/graph APIs return the stored evidence references.
 - [ ] Contradictions include rationale and evidence; scope differences are not mislabelled.
 - [ ] Contradictions include rationale and evidence; scope differences are not mislabelled.
 - [ ] Low evidence is not presented as a globally novel gap.
 - [ ] Partial, empty, timeout, rate-limit and provider-failure paths are visible.
-- [ ] Graph nodes and edges resolve to real claim/source records.
+- [x] Graph API and frontend view use persisted claim/source records and stored relationships.
 - [ ] API errors are structured and do not leak secrets or stack traces.
 - [ ] Clean setup, tests and documented demo run are reproducible; test/build commands have not yet been run in this environment.
