@@ -11,10 +11,11 @@ It is an evidence-traceability tool for early-stage literature exploration—not
 - [x] TinyFish Search and Fetch integrated: accessible page content is persisted with a content hash; URL normalization, duplicate suppression and per-source retrieval failures are handled.
 - [x] SQLAlchemy models and SQLite table initialization are added for research runs, sources, claims, reports and evidence-graph relationships.
 - [x] Configurable OpenAI-compatible LLM extraction stores only claims whose evidence excerpts occur verbatim in retrieved source text.
-- [ ] Cross-source comparison, candidate-gap analysis, final report generation and graph API remain unimplemented.
+- [x] Cross-source relation proposals and tentative candidate gaps are validated against persisted claim IDs and saved to the report draft.
+- [ ] Final cited report rendering, source/graph API and frontend visualization remain unimplemented.
 
 ## MVP pipeline
-Research question → query planning → TinyFish discovery/retrieval → structured extraction and excerpt validation → claim comparison → candidate-gap analysis → cited report and evidence graph.
+Research question → TinyFish discovery/retrieval → evidence-validated claims → cross-source comparison and tentative gaps → final cited report and evidence graph.
 
 ## Planned stack
 - Frontend: React, Vite, TypeScript.
