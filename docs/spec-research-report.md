@@ -102,7 +102,8 @@ No account system, multi-tenancy, paywall/login bypass, custom training, paper-t
 - [x] Discovered sources retain original URLs, metadata and a discovered status.
 - [x] Duplicate URLs are normalized within a run.
 - [x] Extracted claims are linked to stored sources and persisted only when evidence excerpts occur verbatim in retrieved source text.\n- [ ] Every displayed factual report claim has source evidence or is labelled as inference/unsupported.
-- [x] Malformed LLM output is rejected safely; claims with excerpts not found in the stored source text are discarded.\n- [ ] Cross-source claim comparison, graph edges and report-level source references are validated.
+- [x] Malformed LLM output is rejected safely; claims with excerpts not found in the stored source text are discarded.\n- [x] Cross-source relation IDs are validated before persistence; report/source/graph APIs return the stored evidence references.
+- [ ] Contradictions include rationale and evidence; scope differences are not mislabelled.
 - [ ] Contradictions include rationale and evidence; scope differences are not mislabelled.
 - [ ] Low evidence is not presented as a globally novel gap.
 - [ ] Partial, empty, timeout, rate-limit and provider-failure paths are visible.
