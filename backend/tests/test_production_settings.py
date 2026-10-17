@@ -103,3 +103,17 @@ def test_production_rejects_query_strings_and_fragments_in_llm_base_url(
         match="LLM_BASE_URL must not include a query string or fragment",
     ):
         settings.validate_deployment_configuration()
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "https://api.example:99999/v1",
+        "https://api.example:abc/v1",
+    ],
+)
+def test_production_rejects_invalid_llm_base_url_ports(base_url: str) -> None:
+    settings = production_settings(llm_base_url=base_url)
+
+    with pytest.raises(ValueError, match="LLM_BASE_URL must include a valid port"):
+        settings.validate_deployment_configuration()

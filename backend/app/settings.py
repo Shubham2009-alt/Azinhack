@@ -58,6 +58,14 @@ class Settings(BaseSettings):
             raise ValueError(
                 "Production LLM_BASE_URL must not include a query string or fragment."
             )
+        try:
+            port = provider_url.port
+        except ValueError as exc:
+            raise ValueError(
+                "Production LLM_BASE_URL must include a valid port if specified."
+            ) from exc
+        if port is not None and not 1 <= port <= 65535:
+            raise ValueError("Production LLM_BASE_URL must include a valid port if specified.")
 
     @property
     def frontend_origins(self) -> list[str]:
