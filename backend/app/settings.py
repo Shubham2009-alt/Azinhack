@@ -66,6 +66,8 @@ class Settings(BaseSettings):
                 raise ValueError("FRONTEND_ORIGIN must be a valid http(s) origin, not a URL path or wildcard.")
             if parsed.username or parsed.password or parsed.path not in {"", "/"}:
                 raise ValueError("FRONTEND_ORIGIN must not include credentials or URL paths.")
+            if parsed.query or parsed.fragment:
+                raise ValueError("FRONTEND_ORIGIN must not include a query string or fragment.")
             hostname = parsed.hostname.lower() if parsed.hostname else ""
             port = parsed.port
             origin = f"{parsed.scheme.lower()}://{hostname}"

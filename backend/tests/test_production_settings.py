@@ -51,6 +51,20 @@ def test_production_rejects_local_frontend_origins(origin: str) -> None:
         settings.validate_deployment_configuration()
 
 
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "https://researchpilot.example?debug=true",
+        "https://researchpilot.example#section",
+    ],
+)
+def test_frontend_origin_rejects_query_strings_and_fragments(origin: str) -> None:
+    settings = Settings(frontend_origin=origin)
+
+    with pytest.raises(ValueError, match="must not include a query string or fragment"):
+        _ = settings.frontend_origins
+
+
 def test_production_rejects_non_https_llm_base_url() -> None:
     settings = production_settings(llm_base_url="http://api.example/v1")
 
