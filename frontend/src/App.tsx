@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
 const exampleQuestions = [
   "Can satellite imagery help detect river pollution?",
@@ -10,7 +10,7 @@ export default function App() {
   const [question, setQuestion] = useState("");
   const [notice, setNotice] = useState("");
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!question.trim()) {
       setNotice("Enter a research question to continue.");
