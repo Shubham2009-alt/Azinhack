@@ -146,7 +146,7 @@ def test_empty_search_is_not_presented_as_proof_of_no_research(
     with discovery_db() as db:
         run = db.get(ResearchRun, run_id)
         assert run is not None
-        assert run.status == "awaiting_analysis"
+        assert run.status == "partial"
         assert run.warning_summary is not None
         assert "does not establish that no prior work exists" in run.warning_summary
 
