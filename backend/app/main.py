@@ -169,6 +169,7 @@ def health_check() -> dict[str, str]:
     """Return application liveness without exposing configuration or credentials."""
     return {"status": "ok", "service": "researchpilot-api"}
 
+
 @app.get("/api/health/ready", tags=["system"])
 def readiness_check() -> JSONResponse:
     """Report readiness only when the database can execute a simple query."""
