@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.models import Base, ResearchRun, Source
 from app.services import research_discovery
-from app.services.tinyfish_fetch import FetchBatchResult, FetchedPage, TinyFishFetchError
+from app.services.tinyfish_fetch import FetchBatchResult, FetchFailure, FetchedPage, TinyFishFetchError
 from app.services.tinyfish_search import (
     PaperSearchResult,
     TinyFishConfigurationError,
@@ -207,7 +207,7 @@ def test_per_url_fetch_failure_does_not_discard_other_sources(
                     text="Accessible full page content.",
                 )
             ],
-            errors=[],
+            errors=[FetchFailure(url="https://example.org/blocked", code="ROBOTS_BLOCKED")],
         ),
     )
 
@@ -222,4 +222,5 @@ def test_per_url_fetch_failure_does_not_discard_other_sources(
         assert run.warning_summary is not None
         assert "1 of 2" in run.warning_summary
         assert sources[0].retrieval_status == "fetch_failed"
+        assert sources[0].failure_code == "ROBOTS_BLOCKED"
         assert sources[1].retrieval_status == "retrieved"
