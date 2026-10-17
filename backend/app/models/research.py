@@ -50,7 +50,6 @@ class Source(Base):
     query_provenance: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     run: Mapped[ResearchRun] = relationship(back_populates="sources")
     claims: Mapped[list["Claim"]] = relationship(back_populates="source")
-    evidence_links: Mapped[list["EvidenceLink"]] = relationship(back_populates="source", cascade="all, delete-orphan")
 
 
 class Claim(Base):
