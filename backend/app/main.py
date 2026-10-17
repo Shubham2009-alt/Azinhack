@@ -31,6 +31,7 @@ from app.settings import settings
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    settings.validate_deployment_configuration()
     init_db()
     yield
 

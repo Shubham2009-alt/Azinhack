@@ -20,6 +20,39 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    def validate_deployment_configuration(self) -> None:
+        """Fail closed on unsafe or incomplete settings for production deployments."""
+        if self.app_env.strip().lower() not in {"production", "prod"}:
+            return
+
+        required = {
+            "TINYFISH_API_KEY": self.tinyfish_api_key,
+            "LLM_API_KEY": self.llm_api_key,
+            "LLM_BASE_URL": self.llm_base_url,
+            "LLM_MODEL": self.llm_model,
+        }
+        missing = [name for name, value in required.items() if not value.strip()]
+        if missing:
+            raise ValueError(
+                "Production configuration is incomplete; set: " + ", ".join(missing)
+            )
+
+        origins = self.frontend_origins
+        if not origins:
+            raise ValueError("Production requires at least one explicit FRONTEND_ORIGIN.")
+
+        for origin in origins:
+            parsed = urlsplit(origin)
+            hostname = (parsed.hostname or "").lower()
+            if parsed.scheme != "https":
+                raise ValueError("Production FRONTEND_ORIGIN values must use HTTPS.")
+            if hostname in {"localhost", "127.0.0.1", "::1"} or hostname.endswith(".localhost"):
+                raise ValueError("Production FRONTEND_ORIGIN must not point to localhost.")
+
+        provider_url = urlsplit(self.llm_base_url.strip())
+        if provider_url.scheme != "https" or not provider_url.netloc:
+            raise ValueError("Production LLM_BASE_URL must be an absolute HTTPS URL.")
+
     @property
     def frontend_origins(self) -> list[str]:
         raw_values = [part.strip() for part in self.frontend_origin.split(",") if part.strip()]
