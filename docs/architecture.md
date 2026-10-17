@@ -68,7 +68,7 @@ Nodes represent claims and sources; edges represent supports, contradicts, quali
 ## Reliability and security
 - Persist run state and partial results before attempting later stages.
 - Use safe structured errors and request IDs; never return raw upstream errors or stack traces.
-- Store only content needed for evidence traceability; respect source access restrictions and avoid unnecessary personal data.
+- Store only content needed for evidence traceability; cap fetched page text at 60,000 characters per source, respect source access restrictions and avoid unnecessary personal data.
 - No login/paywall bypass. No production credentials in the repository.
 - Use SQLite for the initial single-instance demo; reassess before multi-user concurrent deployment.
 - Source discovery currently uses FastAPI BackgroundTasks for the single-instance demo; this is not a durable production queue. Revisit only if deployment or run duration requires it.
