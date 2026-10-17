@@ -4,8 +4,12 @@ ResearchPilot turns a scientific research question into a structured, evidence-b
 
 It is an evidence-traceability tool for early-stage literature exploration—not a guarantee of scientific correctness or global novelty.
 
-## Status
-Documentation and implementation plan are being established first. The application scaffold has not been added yet.
+## Current status
+- [x] Product requirements, behavior specification and architecture documented.
+- [x] FastAPI backend skeleton and health endpoint added.
+- [x] React/Vite/TypeScript research-question interface added.
+- [ ] TinyFish discovery/retrieval and LLM analysis are not connected yet.
+- [ ] Research runs, database persistence, evidence reports and graph are not implemented yet.
 
 ## MVP pipeline
 Research question → query planning → TinyFish discovery/retrieval → structured extraction → evidence validation → claim comparison → candidate-gap analysis → cited report and evidence graph.
@@ -15,20 +19,71 @@ Research question → query planning → TinyFish discovery/retrieval → struct
 - Backend: Python 3.12, FastAPI, Pydantic, HTTPX.
 - Analysis: configurable LLM API with structured output and deterministic validation.
 - Research discovery: TinyFish Search and Fetch integration, subject to current official API contract verification.
-- Persistence: SQLAlchemy 2.x, Alembic, SQLite.
-- Quality: pytest and Ruff; frontend test/lint tools to be selected during scaffold.
+- Persistence: SQLAlchemy, Alembic, SQLite.
+- Quality: pytest and Ruff; frontend ESLint and TypeScript build.
 
-## Documentation
-- Product requirements: docs/prd-researchpilot.md
-- Research report specification: docs/spec-research-report.md
-- Architecture: docs/architecture.md
-- Claude Code project rules: CLAUDE.md
+## Repository map
+- `backend/app/main.py`: FastAPI app and `GET /api/health`.
+- `backend/app/settings.py`: environment-backed settings.
+- `backend/tests/`: backend tests.
+- `frontend/src/App.tsx`: initial question-entry interface.
+- `frontend/src/styles.css`: responsive workspace styling.
+- `docs/prd-researchpilot.md`: product requirements.
+- `docs/spec-research-report.md`: behavior, API and data contracts.
+- `docs/architecture.md`: system boundaries and data flow.
+- `CLAUDE.md`: coding-agent rules.
 
-## Setup
-Setup commands will be added and verified when the backend/frontend scaffold and dependency lockfiles exist. Do not assume the repository is runnable yet.
+## Prerequisites
+- Python 3.12+
+- Node.js 20.19+ or 22.12+ (required by Vite 6)
+- npm
 
-## Environment configuration
-The implementation is expected to read credentials from local environment variables, including TinyFish and the selected LLM provider. A later scaffold step will add a safe .env.example containing names only and a .gitignore that excludes real secrets. Never commit API keys or real environment files.
+## Run locally
+
+### Backend
+From the repository root:
+
+```bash
+cd backend
+python -m venv .venv
+# Linux/macOS
+source .venv/bin/activate
+# Windows PowerShell: .venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Health check: `http://127.0.0.1:8000/api/health`
+
+Run backend tests in a second terminal:
+
+```bash
+cd backend
+pytest
+ruff check .
+```
+
+### Frontend
+In a separate terminal from the repository root:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open the local URL printed by Vite (normally `http://localhost:5173`). Check the production bundle and lint rules with:
+
+```bash
+npm run build
+npm run lint
+```
+
+The initial frontend is a UI scaffold. Submitting a question currently displays an honest placeholder notice; it does not yet trigger a research run.
+
+## Environment and security
+The backend reads optional TinyFish and LLM configuration from environment variables. The scaffold does not call either provider yet. Use real credentials only in a local, ignored `.env` file or the deployment secret manager. Never commit API keys, tokens or real environment files. Provider integration will be added after verifying current official API contracts.
 
 ## Evidence integrity
 - Preserve original source URLs and excerpts supporting claims.
@@ -36,3 +91,6 @@ The implementation is expected to read credentials from local environment variab
 - Mark weak evidence and inaccessible sources clearly.
 - Never claim global novelty based solely on an unsuccessful search.
 - Never bypass paywalls or access controls.
+
+## Verification status
+The files have been added to the repository, but commands have not been executed in a runtime during this step. Do not interpret the existence of tests or scripts as proof that they pass.
