@@ -39,7 +39,8 @@ TinyFish Search -> normalize/deduplicate sources -> TinyFish Fetch
 - backend/app/schemas/: Pydantic request, response, extraction and report schemas.
 - backend/app/models/: SQLAlchemy persistence models.
 - backend/app/repositories/: typed database operations; do not scatter SQL through routes/services.
-- backend/app/providers/tinyfish.py: TinyFish Search/Fetch adapter, timeouts, error normalization and source metadata normalization.
+- backend/app/services/tinyfish_search.py: TinyFish Search API adapter, timeout, error normalization and academic metadata normalization.
+- backend/app/services/research_discovery.py: source persistence and research-run stage updates.
 - backend/app/providers/llm.py: configurable LLM client; no provider-specific logic in analysis services.
 - backend/app/services/query_planner.py: focused query generation.
 - backend/app/services/extraction.py: structured extraction and schema validation.
@@ -51,10 +52,10 @@ TinyFish Search -> normalize/deduplicate sources -> TinyFish Fetch
 - tests/: unit, API, provider-mock and end-to-end tests.
 - docs/: requirements, behavior contracts and project decisions.
 
-These paths are proposed for the empty repository, not existing files.
+The architecture above describes the target design. Current implementation has a FastAPI app, SQLAlchemy models, a TinyFish academic-search adapter, and a background source-discovery service; query planning, page fetching, LLM analysis, report generation and graph endpoints remain future steps.
 
 ## Integration rules
-- Verify the current official TinyFish API docs and authentication contract during implementation. Keep the provider behind one adapter so endpoint or response changes do not leak into services.
+- TinyFish Search currently uses the documented GET https://api.search.tinyfish.ai endpoint and X-API-Key authentication. Keep provider calls behind one adapter so endpoint or response changes do not leak into services. TinyFish Fetch remains unimplemented.
 - Use environment variables for TinyFish credentials, LLM API key, model and optional base URL. Never put secrets in source, frontend environment variables, committed settings, fixtures or logs.
 - Set explicit HTTP timeouts and bounded retries only for retry-safe operations. Handle rate limits and inaccessible sources as structured source statuses.
 - Use typed, schema-constrained LLM outputs where supported. Validate source IDs, excerpts and required fields before persistence.
@@ -70,7 +71,7 @@ Nodes represent claims and sources; edges represent supports, contradicts, quali
 - Store only content needed for evidence traceability; respect source access restrictions and avoid unnecessary personal data.
 - No login/paywall bypass. No production credentials in the repository.
 - Use SQLite for the initial single-instance demo; reassess before multi-user concurrent deployment.
-- No background queue in v1 unless live run duration proves synchronous request handling unsuitable; if needed, propose a separately approved change.
+- Source discovery currently uses FastAPI BackgroundTasks for the single-instance demo; this is not a durable production queue. Revisit only if deployment or run duration requires it.
 
 ## Verification
 Mock external providers for deterministic tests. Keep a small manually reviewed evaluation set and record sample size. Measure citation support, extraction completeness, contradiction quality, candidate-gap relevance, end-to-end completion and latency before claiming quality or performance.
