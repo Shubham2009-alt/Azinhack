@@ -12,7 +12,8 @@ It is an evidence-traceability tool for early-stage literature exploration—not
 - [x] SQLAlchemy models and SQLite table initialization are added for research runs, sources, claims, reports and evidence-graph relationships.
 - [x] Configurable OpenAI-compatible LLM extraction stores only claims whose evidence excerpts occur verbatim in retrieved source text.
 - [x] Cross-source relation proposals and tentative candidate gaps are validated against persisted claim IDs and saved to the report draft.
-- [ ] Final cited report rendering, source/graph API and frontend visualization remain unimplemented.
+- [x] Read-only report, source-list and evidence-graph API endpoints expose persisted results.
+- [ ] Final cited report rendering and frontend visualization remain unimplemented.
 
 ## MVP pipeline
 Research question → TinyFish discovery/retrieval → evidence-validated claims → cross-source comparison and tentative gaps → final cited report and evidence graph.
@@ -26,7 +27,7 @@ Research question → TinyFish discovery/retrieval → evidence-validated claims
 - Quality: pytest and Ruff; frontend ESLint and TypeScript build.
 
 ## Repository map
-- `backend/app/main.py`: FastAPI health, create-run and run-status endpoints; new runs start source discovery in a FastAPI background task.
+- `backend/app/main.py`: FastAPI health, run creation/status, report, source-list and evidence-graph endpoints; new runs start source discovery in a FastAPI background task.
 - `backend/app/services/tinyfish_search.py`: TinyFish academic search client and response normalization.\n- `backend/app/services/tinyfish_fetch.py`: TinyFish Fetch API client; Markdown extraction, bounded content storage and normalized errors.
 - `backend/app/services/research_discovery.py`: source persistence, full-page retrieval and run-state updates.
 - `backend/app/settings.py`: environment-backed settings, including `DATABASE_URL`.
@@ -87,7 +88,7 @@ npm run build
 npm run lint
 ```
 
-The frontend submits questions to the API and displays the saved run ID. With `TINYFISH_API_KEY` configured on the backend, a background task searches academic papers and fetches accessible page content. Source retrieval failures are stored per source and do not discard successfully fetched sources. Without a key, the run fails with a safe configuration status. LLM extraction now requires LLM_API_KEY, LLM_BASE_URL and LLM_MODEL on the backend. It stores source-linked claims only when the proposed excerpt is an exact substring of retrieved content. Cross-source comparison, gap analysis, report generation and graph retrieval are still pending.
+The frontend submits questions to the API and displays the saved run ID. The report, sources and graph endpoints are available for the frontend to consume. With `TINYFISH_API_KEY` configured on the backend, a background task searches academic papers and fetches accessible page content. Source retrieval failures are stored per source and do not discard successfully fetched sources. Without a key, the run fails with a safe configuration status. LLM extraction now requires LLM_API_KEY, LLM_BASE_URL and LLM_MODEL on the backend. It stores source-linked claims only when the proposed excerpt is an exact substring of retrieved content. Cross-source comparison, gap analysis, report generation and graph retrieval are still pending.
 
 ## Environment and security
 The backend reads TinyFish and LLM configuration from environment variables. Configure LLM_BASE_URL as an OpenAI-compatible API base URL (for example, https://api.openai.com/v1), plus LLM_API_KEY and LLM_MODEL. Provider compatibility varies; live provider calls have not been verified in this environment. Use real credentials only in a local, ignored `.env` file or the deployment secret manager. Never commit API keys, tokens or real environment files. Additional provider integration will follow verification of each official API contract.
