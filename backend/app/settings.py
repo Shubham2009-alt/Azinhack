@@ -54,6 +54,10 @@ class Settings(BaseSettings):
             raise ValueError("Production LLM_BASE_URL must be an absolute HTTPS URL.")
         if provider_url.username or provider_url.password:
             raise ValueError("Production LLM_BASE_URL must not include embedded credentials.")
+        if provider_url.query or provider_url.fragment:
+            raise ValueError(
+                "Production LLM_BASE_URL must not include a query string or fragment."
+            )
 
     @property
     def frontend_origins(self) -> list[str]:
