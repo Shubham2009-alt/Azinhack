@@ -3,6 +3,7 @@ from typing import Any
 
 import httpx
 
+from app.services.tinyfish_search import canonicalize_url
 from app.settings import settings
 
 FETCH_API_URL = "https://api.fetch.tinyfish.ai"
@@ -41,11 +42,21 @@ def fetch_pages(urls: list[str], *, purpose: str, limit: int = 10) -> FetchBatch
     api_key = settings.tinyfish_api_key.strip()
     if not api_key:
         raise TinyFishFetchError("TinyFish API key is not configured.")
-    bounded_urls = list(dict.fromkeys(urls))[: max(1, min(limit, 10))]
+    normalized_urls: list[str] = []
+    seen_urls: set[str] = set()
+    for url in urls:
+        if not isinstance(url, str):
+            raise ValueError("Only safe public HTTP(S) URLs can be fetched.")
+        normalized_url = canonicalize_url(url)
+        if normalized_url is None:
+            raise ValueError("Only safe public HTTP(S) URLs can be fetched.")
+        if normalized_url not in seen_urls:
+            seen_urls.add(normalized_url)
+            normalized_urls.append(normalized_url)
+
+    bounded_urls = normalized_urls[: max(1, min(limit, 10))]
     if not bounded_urls:
         return FetchBatchResult(results=[], errors=[])
-    if any(not url.startswith(("http://", "https://")) for url in bounded_urls):
-        raise ValueError("Only HTTP(S) URLs can be fetched.")
 
     try:
         response = httpx.post(
