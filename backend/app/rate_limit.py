@@ -20,9 +20,15 @@ def enforce_create_run_rate_limit(request: Request) -> None:
     cutoff = now - CREATE_RUN_WINDOW_SECONDS
 
     with _lock:
+        # Expire inactive client entries globally, not only when that same
+        # client returns. Otherwise one-off client IPs accumulate indefinitely.
+        for tracked_ip, tracked_timestamps in list(_requests.items()):
+            while tracked_timestamps and tracked_timestamps[0] <= cutoff:
+                tracked_timestamps.popleft()
+            if not tracked_timestamps:
+                del _requests[tracked_ip]
+
         timestamps = _requests.setdefault(client_ip, deque())
-        while timestamps and timestamps[0] <= cutoff:
-            timestamps.popleft()
 
         if len(timestamps) >= CREATE_RUN_LIMIT:
             retry_after = max(1, int(timestamps[0] + CREATE_RUN_WINDOW_SECONDS - now))
