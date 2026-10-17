@@ -6,8 +6,8 @@ It is an evidence-traceability tool for early-stage literature exploration—not
 
 ## Current status
 - [x] Product requirements, behavior specification and architecture documented.
-- [x] FastAPI backend skeleton and health endpoint added.
-- [x] React/Vite/TypeScript research-question interface added.
+- [x] FastAPI health, create-research-run, and run-status endpoints added.
+- [x] React/Vite/TypeScript question form connected to the create-run API.
 - [ ] TinyFish discovery/retrieval and LLM analysis are not connected yet.
 - [x] SQLAlchemy models and SQLite table initialization are added for research runs, sources, claims, reports and evidence-graph relationships.
 - [ ] Research orchestration, live provider integration and report generation are not implemented yet.
@@ -24,12 +24,12 @@ Research question → query planning → TinyFish discovery/retrieval → struct
 - Quality: pytest and Ruff; frontend ESLint and TypeScript build.
 
 ## Repository map
-- `backend/app/main.py`: FastAPI app and `GET /api/health`.
+- `backend/app/main.py`: FastAPI health endpoint, `POST /api/research-runs`, and `GET /api/research-runs/{run_id}`.
 - `backend/app/settings.py`: environment-backed settings, including `DATABASE_URL`.
 - `backend/app/database.py`: engine, session dependency and table initialization.
 - `backend/app/models/`: research records and evidence-graph persistence models.
 - `backend/tests/`: backend tests.
-- `frontend/src/App.tsx`: initial question-entry interface.
+- `frontend/src/App.tsx`: question-entry interface connected to the API; it displays the queued run ID.
 - `frontend/src/styles.css`: responsive workspace styling.
 - `docs/prd-researchpilot.md`: product requirements.
 - `docs/spec-research-report.md`: behavior, API and data contracts.
@@ -83,10 +83,10 @@ npm run build
 npm run lint
 ```
 
-The initial frontend is a UI scaffold. Submitting a question currently displays an honest placeholder notice; it does not yet trigger a research run.
+The frontend submits questions to the API and displays the saved run ID. Runs remain queued until the research orchestration is implemented; this step does not yet search sources or generate reports.
 
 ## Environment and security
-The backend reads optional TinyFish and LLM configuration from environment variables. The scaffold does not call either provider yet. Use real credentials only in a local, ignored `.env` file or the deployment secret manager. Never commit API keys, tokens or real environment files. Provider integration will be added after verifying current official API contracts.
+The backend reads optional TinyFish and LLM configuration from environment variables. The current API does not call either provider yet. Use real credentials only in a local, ignored `.env` file or the deployment secret manager. Never commit API keys, tokens or real environment files. Provider integration will be added after verifying current official API contracts.
 
 ## Evidence integrity
 - Preserve original source URLs and excerpts supporting claims.
