@@ -35,7 +35,7 @@ export default function App() {
       }
       const result = (await response.json()) as { run_id: string; status: string };
       setRunId(result.run_id);
-      setNotice("Request saved as queued. Research processing is not connected yet.");
+      setNotice("Research run created. Results are being processed; report and graph views are not displayed in this interface yet.");
     } catch {
       setNotice("Could not reach the API. Start the backend and try again.");
     } finally {
