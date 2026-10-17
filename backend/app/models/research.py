@@ -67,9 +67,6 @@ class Claim(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
     run: Mapped[ResearchRun] = relationship(back_populates="claims")
     source: Mapped[Source | None] = relationship(back_populates="claims")
-    evidence_links: Mapped[list["EvidenceLink"]] = relationship(back_populates="claim", cascade="all, delete-orphan")
-    outgoing_relations: Mapped[list["ClaimRelation"]] = relationship(foreign_keys="ClaimRelation.from_claim_id", back_populates="from_claim", cascade="all, delete-orphan")
-    incoming_relations: Mapped[list["ClaimRelation"]] = relationship(foreign_keys="ClaimRelation.to_claim_id", back_populates="to_claim", cascade="all, delete-orphan")
 
 
 class Report(Base):
