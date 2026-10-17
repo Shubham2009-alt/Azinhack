@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
@@ -38,4 +38,77 @@ class ResearchRunStatusResponse(BaseModel):
     updated_at: datetime
     source_count: int
     usable_source_count: int
+    warning_summary: str | None = None
+
+
+class SourceClaimResponse(BaseModel):
+    id: UUID
+    claim_text: str
+    claim_type: str
+    evidence_excerpt: str | None
+    confidence_label: str
+    is_inference: bool
+
+
+class ResearchSourceResponse(BaseModel):
+    id: UUID
+    title: str
+    canonical_url: str
+    publisher: str | None = None
+    published_at: datetime | None = None
+    publication_year: int | None = None
+    authors: list[str] = Field(default_factory=list)
+    venue: str | None = None
+    citation_count: int | None = None
+    retrieval_status: str
+    failure_code: str | None = None
+    excerpt: str | None = None
+    retrieved_at: datetime
+    claims: list[SourceClaimResponse] = Field(default_factory=list)
+
+
+class SourcesResponse(BaseModel):
+    run_id: UUID
+    status: str
+    sources: list[ResearchSourceResponse]
+    warning_summary: str | None = None
+
+
+class ResearchReportResponse(BaseModel):
+    run_id: UUID
+    question: str
+    status: str
+    stage: str
+    progress: int
+    generated_at: datetime | None = None
+    structured_sections: dict[str, Any] = Field(default_factory=dict)
+    claims: list[SourceClaimResponse] = Field(default_factory=list)
+    sources: list[ResearchSourceResponse] = Field(default_factory=list)
+    validation_warnings: list[str] = Field(default_factory=list)
+    warning_summary: str | None = None
+
+
+class GraphNodeResponse(BaseModel):
+    id: str
+    type: Literal["claim", "source"]
+    label: str
+    confidence: str | None = None
+    source_url: str | None = None
+    excerpt: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class GraphEdgeResponse(BaseModel):
+    source: str
+    target: str
+    type: Literal["supports", "contradicts", "qualifies", "derived_from"]
+    rationale: str
+    confidence: str
+
+
+class ResearchGraphResponse(BaseModel):
+    run_id: UUID
+    status: str
+    nodes: list[GraphNodeResponse]
+    edges: list[GraphEdgeResponse]
     warning_summary: str | None = None
