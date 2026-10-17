@@ -135,6 +135,8 @@ A few good defaults to keep in mind:
 - Never store real credentials in a commit, issue, screenshot, or shared log
 - Treat all external provider responses as untrusted input and validate before displaying or persisting them
 
+For production deployment limits and the current no-authentication boundary, see [docs/deployment-security.md](docs/deployment-security.md).
+
 ## Evidence integrity
 
 This project is designed to be honest about what it knows and what it does not know.
