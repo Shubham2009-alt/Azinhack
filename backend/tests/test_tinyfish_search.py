@@ -67,6 +67,13 @@ def test_search_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
         ("https://example.org", "https://example.org/"),
         ("javascript:alert(1)", None),
         ("https://user:password@example.org/paper", None),
+        ("http://localhost/admin", None),
+        ("http://localhost./admin", None),
+        ("http://127.0.0.1/admin", None),
+        ("http://192.168.1.10/paper", None),
+        ("http://169.254.169.254/latest/meta-data", None),
+        ("http://[::1]/admin", None),
+        ("http://research-db.internal/paper", None),
         ("not a URL", None),
     ],
 )
