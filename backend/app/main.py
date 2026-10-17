@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.database import init_db
 from app.settings import settings
 
 app = FastAPI(
@@ -22,3 +23,8 @@ app.add_middleware(
 def health_check() -> dict[str, str]:
     """Return application liveness without exposing configuration or credentials."""
     return {"status": "ok", "service": "researchpilot-api"}
+
+
+@app.on_event("startup")
+def initialize_database() -> None:
+    init_db()
