@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
 type Claim = { id: string; claim_text: string; claim_type: string; evidence_excerpt?: string | null; confidence_label: string; is_inference: boolean };
 type Source = { id: string; title: string; canonical_url: string; publisher?: string | null; publication_year?: number | null; authors: string[]; venue?: string | null; retrieval_status: string; failure_code?: string | null; excerpt?: string | null; claims: Claim[] };
@@ -23,14 +23,30 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"report" | "sources" | "graph">("report");
   const [selected, setSelected] = useState("");
+  const activeRunId = useRef("");
+  const refreshGeneration = useRef(0);
 
   const refresh = useCallback(async (id: string) => {
-    const responses = await Promise.all([
-      fetch("/api/research-runs/" + id), fetch("/api/research-runs/" + id + "/report"), fetch("/api/research-runs/" + id + "/graph"),
-    ]);
-    if (responses[0].ok) setRun(await responses[0].json() as Run);
-    if (responses[1].ok) setReport(await responses[1].json() as Report);
-    if (responses[2].ok) setGraph(await responses[2].json() as Graph);
+    const generation = ++refreshGeneration.current;
+    try {
+      const responses = await Promise.all([
+        fetch("/api/research-runs/" + id), fetch("/api/research-runs/" + id + "/report"), fetch("/api/research-runs/" + id + "/graph"),
+      ]);
+      const [runResponse, reportResponse, graphResponse] = responses;
+      const isCurrent = () => generation === refreshGeneration.current && activeRunId.current === id;
+      if (!isCurrent()) return;
+      const [nextRun, nextReport, nextGraph] = await Promise.all([
+        runResponse.ok ? runResponse.json() as Promise<Run> : null,
+        reportResponse.ok ? reportResponse.json() as Promise<Report> : null,
+        graphResponse.ok ? graphResponse.json() as Promise<Graph> : null,
+      ]);
+      if (!isCurrent()) return;
+      if (nextRun) setRun(nextRun);
+      if (nextReport) setReport(nextReport);
+      if (nextGraph) setGraph(nextGraph);
+    } catch {
+      // Keep the last consistent result set; the user can retry refresh after a transient failure.
+    }
   }, []);
 
   useEffect(() => {
@@ -54,7 +70,7 @@ export default function App() {
     event.preventDefault();
     if (!question.trim()) { setNotice("Enter a research question to continue."); return; }
     if (yearMin && yearMax && Number(yearMin) > Number(yearMax)) { setNotice("The start year must not be later than the end year."); return; }
-    setBusy(true); setNotice(""); setRunId(""); setRun(null); setReport(null); setGraph(null);
+    setBusy(true); setNotice(""); activeRunId.current = ""; refreshGeneration.current += 1; setRunId(""); setRun(null); setReport(null); setGraph(null);
     try {
       const body: { question: string; year_min?: number; year_max?: number } = { question: question.trim() };
       if (yearMin) body.year_min = Number(yearMin);
@@ -62,6 +78,7 @@ export default function App() {
       const response = await fetch("/api/research-runs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!response.ok) { setNotice(response.status === 422 ? "Check your question and year range. Years must be between 1900 and 2100." : "Could not start research. Check that the API is running."); return; }
       const result = await response.json() as { run_id: string };
+      activeRunId.current = result.run_id;
       setRunId(result.run_id); setTab("report");
     } catch { setNotice("Could not reach the API. Start the backend and try again."); }
     finally { setBusy(false); }
