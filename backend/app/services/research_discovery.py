@@ -94,7 +94,7 @@ def run_research_discovery(run_id: str) -> None:
         db.commit()
 
         if not sources_by_url:
-            run.status = "awaiting_analysis"
+            run.status = "partial"
             run.stage = "source_discovery_complete"
             run.progress = 35
             run.warning_summary = (
