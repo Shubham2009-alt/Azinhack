@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.database import SessionLocal
 from app.models import ResearchRun, Source
 from app.services.tinyfish_fetch import TinyFishFetchError, fetch_pages
+from app.services.research_analysis import run_research_analysis
 from app.services.tinyfish_search import (
     TinyFishConfigurationError,
     TinyFishSearchError,
@@ -191,3 +192,4 @@ def run_research_discovery(run_id: str) -> None:
             else None
         )
         db.commit()
+        run_research_analysis(run.id)
