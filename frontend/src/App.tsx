@@ -55,8 +55,9 @@ export default function App() {
     const poll = async () => {
       try {
         const response = await fetch("/api/research-runs/" + runId);
-        if (!response.ok || cancelled) return;
+        if (!response.ok || cancelled || activeRunId.current !== runId) return;
         const next = await response.json() as Run;
+        if (cancelled || activeRunId.current !== runId) return;
         setRun(next);
         if (terminal(next.status)) await refresh(runId);
       } catch { /* Retry on the next poll after transient network errors. */ }
