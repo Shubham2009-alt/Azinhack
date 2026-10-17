@@ -122,7 +122,6 @@ def test_persists_cross_source_relations_and_tentative_gaps(
         )
         db.add(source_b)
         db.commit()
-        source_b_id = source_b.id
 
     def fake_extract(**kwargs):
         if kwargs["source_id"] == source_a_id:
