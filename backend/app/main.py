@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db, init_db
 from app.models import Claim, ClaimRelation, Report, ResearchRun, Source
+from app.rate_limit import enforce_create_run_rate_limit
 from app.schemas import (
     CreateResearchRunRequest,
     CreateResearchRunResponse,
@@ -100,6 +101,7 @@ async def http_exception_handler(_request: Request, exc: HTTPException) -> JSONR
     return JSONResponse(
         status_code=exc.status_code,
         content=_error_payload(code, message, details=details if isinstance(details, list) else None, request_id=uuid4().hex),
+        headers=exc.headers,
     )
 
 
@@ -169,6 +171,7 @@ def health_check() -> dict[str, str]:
     response_model=CreateResearchRunResponse,
     status_code=status.HTTP_202_ACCEPTED,
     tags=["research"],
+    dependencies=[Depends(enforce_create_run_rate_limit)],
 )
 def create_research_run(
     payload: CreateResearchRunRequest,

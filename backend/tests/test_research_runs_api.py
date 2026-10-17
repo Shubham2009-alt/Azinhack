@@ -9,10 +9,12 @@ from sqlalchemy.pool import StaticPool
 from app.database import get_db
 from app.main import app
 from app.models import Base
+from app.rate_limit import clear_rate_limit_state
 
 
 @pytest.fixture()
 def client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]:
+    clear_rate_limit_state()
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -112,3 +114,18 @@ def test_unexpected_errors_are_sanitized(client: TestClient, monkeypatch: pytest
     assert payload["error"]["code"] == "INTERNAL_SERVER_ERROR"
     assert "super-secret-debug-info" not in payload["error"]["message"]
     assert "request_id" in payload["error"]
+
+
+def test_create_research_run_is_rate_limited(client: TestClient) -> None:
+    clear_rate_limit_state()
+    payload = {"question": "Can satellite imagery detect river pollution?"}
+
+    for _ in range(5):
+        response = client.post("/api/research-runs", json=payload)
+        assert response.status_code == 202
+
+    limited = client.post("/api/research-runs", json=payload)
+    assert limited.status_code == 429
+    assert limited.headers.get("Retry-After", "").isdigit()
+    assert limited.json()["error"]["code"] == "RATE_LIMIT_EXCEEDED"
+    clear_rate_limit_state()
