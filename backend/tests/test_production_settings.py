@@ -8,6 +8,7 @@ from app.settings import Settings
 def production_settings(**overrides: str) -> Settings:
     values: dict[str, str] = {
         "app_env": "production",
+        "database_url": "postgresql+psycopg://db_user:db_password@db.example:5432/researchpilot",
         "frontend_origin": "https://researchpilot.example",
         "tinyfish_api_key": "tinyfish-test-key",
         "llm_api_key": "llm-test-key",
@@ -150,3 +151,23 @@ def test_production_requires_shared_rate_limit_store() -> None:
     settings = production_settings(redis_url="")
     with pytest.raises(ValueError, match="REDIS_URL"):
         settings.validate_deployment_configuration()
+
+
+@pytest.mark.parametrize(
+    "database_url",
+    [
+        "sqlite:///./researchpilot.db",
+        "postgresql://",
+        "http://db.example/researchpilot",
+        "postgresql://db.example:99999/researchpilot",
+    ],
+)
+def test_production_rejects_unsafe_database_urls(database_url: str) -> None:
+    settings = production_settings(database_url=database_url)
+
+    with pytest.raises(ValueError, match="DATABASE_URL"):
+        settings.validate_deployment_configuration()
+
+
+def test_development_allows_sqlite_database() -> None:
+    Settings(app_env="development", database_url="sqlite:///./researchpilot.db").validate_deployment_configuration()
