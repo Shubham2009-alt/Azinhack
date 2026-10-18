@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.auth import AuthenticatedUser, get_current_user
 from app.database import engine, get_db, init_db
 from app.models import Claim, ClaimRelation, Report, ResearchRun, Source
-from app.rate_limit import enforce_create_run_rate_limit
+from app.rate_limit import check_rate_limit_store, enforce_create_run_rate_limit
 from app.security import RequestSecurityMiddleware
 from app.schemas import (
     CreateResearchRunRequest,
@@ -184,6 +184,12 @@ def readiness_check() -> JSONResponse:
             connection.execute(text("SELECT 1"))
     except Exception:
         logger.warning("Database readiness check failed", exc_info=True)
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"status": "not_ready", "service": "researchpilot-api"},
+        )
+    if settings.app_env.strip().lower() in {"production", "prod"} and not check_rate_limit_store():
+        logger.warning("Redis rate-limit readiness check failed")
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"status": "not_ready", "service": "researchpilot-api"},

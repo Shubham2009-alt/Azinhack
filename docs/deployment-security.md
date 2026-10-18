@@ -22,4 +22,4 @@ The limiter uses the direct ASGI client address, not arbitrary `X-Forwarded-For`
 
 ## Health probes
 - `GET /api/health` is liveness and does not check dependencies.
-- `GET /api/health/ready` checks database connectivity and returns 503 if unavailable. It does not verify Redis, TinyFish, or LLM availability.
+- `GET /api/health/ready` checks database connectivity and, in production, Redis connectivity for the required rate limiter. It returns 503 if either check fails. It does not verify TinyFish or LLM availability.

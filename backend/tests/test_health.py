@@ -58,3 +58,31 @@ def test_readiness_endpoint_returns_503_when_database_is_unavailable(monkeypatch
         "status": "not_ready",
         "service": "researchpilot-api",
     }
+
+
+def test_production_readiness_returns_503_when_redis_is_unavailable(monkeypatch) -> None:
+    monkeypatch.setattr(main, "engine", HealthyEngine())
+    monkeypatch.setattr(main.settings, "app_env", "production")
+    monkeypatch.setattr(main, "check_rate_limit_store", lambda: False)
+
+    response = client.get("/api/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "not_ready",
+        "service": "researchpilot-api",
+    }
+
+
+def test_production_readiness_returns_ready_when_redis_is_available(monkeypatch) -> None:
+    monkeypatch.setattr(main, "engine", HealthyEngine())
+    monkeypatch.setattr(main.settings, "app_env", "production")
+    monkeypatch.setattr(main, "check_rate_limit_store", lambda: True)
+
+    response = client.get("/api/health/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ready",
+        "service": "researchpilot-api",
+    }
