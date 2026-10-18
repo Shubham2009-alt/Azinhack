@@ -23,6 +23,7 @@ function ResearchWorkspace({ session, onSignOut }: { session: AuthSession; onSig
   const [report, setReport] = useState<Report | null>(null);
   const [graph, setGraph] = useState<Graph | null>(null);
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [tab, setTab] = useState<"report" | "sources" | "graph">("report");
   const [selected, setSelected] = useState("");
   const activeRunId = useRef("");
@@ -85,6 +86,32 @@ function ResearchWorkspace({ session, onSignOut }: { session: AuthSession; onSig
       setRunId(result.run_id); setTab("report");
     } catch { setNotice("Could not reach the API. Start the backend and try again."); }
     finally { setBusy(false); }
+  }
+
+  async function deleteCurrentRun() {
+    if (!runId || deleting) return;
+    if (!window.confirm("Delete this research run and all associated evidence?")) return;
+    setDeleting(true);
+    setNotice("");
+    try {
+      const response = await apiFetch("/api/research-runs/" + runId, { method: "DELETE" });
+      if (!response.ok) {
+        setNotice(response.status === 404 ? "This research run no longer exists." : "Could not delete this research run. Try again.");
+        return;
+      }
+      activeRunId.current = "";
+      refreshGeneration.current += 1;
+      setRunId("");
+      setRun(null);
+      setReport(null);
+      setGraph(null);
+      setSelected("");
+      setNotice("Research run and associated evidence deleted.");
+    } catch {
+      setNotice("Could not reach the API to delete this research run.");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   const sections = report?.structured_sections ?? {};
