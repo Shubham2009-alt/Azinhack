@@ -85,3 +85,27 @@ def test_invalid_identity_response_fails_closed(monkeypatch: pytest.MonkeyPatch)
         auth.get_current_user("Bearer token")
     assert error.value.status_code == 503
     assert error.value.detail["code"] == "AUTH_PROVIDER_INVALID_RESPONSE"
+
+
+def test_auth_rejects_oversized_provider_response_before_json_parsing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(auth.settings, "supabase_url", "https://project-ref.supabase.co")
+    monkeypatch.setattr(auth.settings, "supabase_publishable_key", "sb_publishable_test")
+
+    class OversizedResponse:
+        status_code = 200
+        headers = {}
+
+        content = b"x" * (auth.MAX_AUTH_PROVIDER_RESPONSE_BYTES + 1)
+
+        def json(self):
+            pytest.fail("oversized auth response must be rejected before JSON parsing")
+
+    monkeypatch.setattr(auth.httpx, "get", lambda *_args, **_kwargs: OversizedResponse())
+
+    with pytest.raises(HTTPException) as error:
+        auth.get_current_user("Bearer token")
+
+    assert error.value.status_code == 503
+    assert error.value.detail["code"] == "AUTH_PROVIDER_INVALID_RESPONSE"
