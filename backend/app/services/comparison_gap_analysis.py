@@ -5,7 +5,7 @@ import httpx
 from pydantic import BaseModel, Field, ValidationError
 
 from app.services.llm_analysis import AnalysisConfigurationError, AnalysisProviderError
-from app.services.provider_io import response_json_limited
+from app.services.provider_io import request_json_limited
 from app.settings import settings
 
 MAX_CLAIMS_FOR_COMPARISON = 80
@@ -90,8 +90,10 @@ def compare_claims_and_identify_gaps(
         "Return empty arrays when no defensible result is available."
     )
     try:
-        response = httpx.post(
+        payload = request_json_limited(
+            "POST",
             base_url if base_url.endswith("/chat/completions") else f"{base_url}/chat/completions",
+            max_bytes=MAX_PROVIDER_RESPONSE_BYTES,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
                 "model": model,
@@ -110,8 +112,6 @@ def compare_claims_and_identify_gaps(
             },
             timeout=45.0,
         )
-        response.raise_for_status()
-        payload = response_json_limited(response, MAX_PROVIDER_RESPONSE_BYTES)
         content = payload["choices"][0]["message"]["content"]
         if not isinstance(content, str):
             raise ValueError("Invalid response content")
