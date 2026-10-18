@@ -109,10 +109,6 @@ export async function restoreSession(): Promise<AuthSession | null> {
   return current;
 }
 
-export async function getSession(): Promise<AuthSession | null> {
-  return restoreSession();
-}
-
 export async function getValidAccessToken(): Promise<string | null> {
   const session = await restoreSession();
   return session?.access_token ?? null;
@@ -131,6 +127,8 @@ export async function signOut(): Promise<void> {
     if (current?.access_token && isAuthConfigured()) {
       await authRequest("logout", undefined, current.access_token);
     }
+  } catch {
+    // Clear the local session even when the provider is temporarily unreachable.
   } finally {
     sessionStorage.removeItem(SESSION_KEY);
   }
