@@ -6,6 +6,7 @@ from app.services import comparison_gap_analysis as service
 from app.services.comparison_gap_analysis import (
     compare_claims_and_identify_gaps,
 )
+from app.services.llm_analysis import AnalysisProviderError
 
 
 def configure(monkeypatch: pytest.MonkeyPatch) -> None:
