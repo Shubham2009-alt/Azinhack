@@ -218,3 +218,50 @@ def test_fetch_discards_unsafe_final_url(monkeypatch: pytest.MonkeyPatch) -> Non
     result = fetch_pages(["https://example.org/paper"], purpose="Fetch evidence")
 
     assert result.results == []
+
+
+def test_fetch_bounds_metadata_and_sanitizes_provider_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tinyfish_fetch.settings, "tinyfish_api_key", "test-key")
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self) -> dict:
+            return {
+                "results": [{
+                    "url": "https://example.org/paper",
+                    "title": "T" * (tinyfish_fetch.MAX_TITLE_CHARS + 10),
+                    "description": "D" * (tinyfish_fetch.MAX_DESCRIPTION_CHARS + 10),
+                    "author": "A" * (tinyfish_fetch.MAX_AUTHOR_CHARS + 10),
+                    "published_date": "P" * (tinyfish_fetch.MAX_DATE_CHARS + 10),
+                    "text": "source text",
+                }],
+                "errors": [{"url": "https://example.org/paper", "error": "secret token: abc"}],
+            }
+
+    monkeypatch.setattr(tinyfish_fetch.httpx, "post", lambda *args, **kwargs: FakeResponse())
+    result = fetch_pages(["https://example.org/paper"], purpose="P" * 10000)
+    page = result.results[0]
+    assert len(page.title or "") == tinyfish_fetch.MAX_TITLE_CHARS
+    assert len(page.description or "") == tinyfish_fetch.MAX_DESCRIPTION_CHARS
+    assert len(page.author or "") == tinyfish_fetch.MAX_AUTHOR_CHARS
+    assert len(page.published_date or "") == tinyfish_fetch.MAX_DATE_CHARS
+    assert result.errors[0].code == "FETCH_FAILED"
+
+
+def test_fetch_rejects_oversized_response_before_json_parse(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tinyfish_fetch.settings, "tinyfish_api_key", "test-key")
+
+    class FakeResponse:
+        content = b"x" * (tinyfish_fetch.MAX_PROVIDER_RESPONSE_BYTES + 1)
+
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self):
+            pytest.fail("oversized response must be rejected before JSON parsing")
+
+    monkeypatch.setattr(tinyfish_fetch.httpx, "post", lambda *args, **kwargs: FakeResponse())
+    with pytest.raises(TinyFishFetchError, match="request failed"):
+        fetch_pages(["https://example.org/paper"], purpose="Fetch evidence")

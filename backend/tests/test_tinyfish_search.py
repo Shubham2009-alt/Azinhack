@@ -179,3 +179,26 @@ def test_search_rejects_unexpected_response_shape(monkeypatch: pytest.MonkeyPatc
 def test_search_rejects_invalid_arguments(query: str, year_min: int | None, year_max: int | None) -> None:
     with pytest.raises(ValueError):
         search_research_papers(query, year_min=year_min, year_max=year_max)
+
+
+def test_search_bounds_query_and_rejects_oversized_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tinyfish_search.settings, "tinyfish_api_key", "test-key")
+    captured = {}
+
+    class FakeResponse:
+        content = b"x" * (tinyfish_search.MAX_PROVIDER_RESPONSE_BYTES + 1)
+
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self):
+            pytest.fail("oversized response must be rejected before JSON parsing")
+
+    def fake_get(url, *, params, headers, timeout):
+        captured["query"] = params["query"]
+        return FakeResponse()
+
+    monkeypatch.setattr(tinyfish_search.httpx, "get", fake_get)
+    with pytest.raises(TinyFishSearchError, match="request failed"):
+        search_research_papers("q" * (tinyfish_search.MAX_QUERY_CHARS + 50))
+    assert len(captured["query"]) == tinyfish_search.MAX_QUERY_CHARS

@@ -5,9 +5,15 @@ import httpx
 from pydantic import BaseModel, Field, ValidationError
 
 from app.services.llm_analysis import AnalysisConfigurationError, AnalysisProviderError
+from app.services.provider_io import response_json_limited
 from app.settings import settings
 
 MAX_CLAIMS_FOR_COMPARISON = 80
+MAX_PROVIDER_RESPONSE_BYTES = 1_000_000
+MAX_QUESTION_CHARS = 1000
+MAX_CLAIM_ID_CHARS = 100
+MAX_CLAIM_TEXT_CHARS = 2000
+MAX_EVIDENCE_CHARS = 1200
 
 
 class ProposedRelation(BaseModel):
@@ -47,9 +53,15 @@ def compare_claims_and_identify_gaps(
     # Allocate the comparison budget across sources instead of letting early sources
     # consume the entire budget. Preserve input order within each source.
     claims_by_source: dict[str, list[dict[str, str | None]]] = {}
-    for claim in claims:
-        source_id = str(claim.get("source_id") or "unknown")
-        claims_by_source.setdefault(source_id, []).append(claim)
+    for claim in claims[: MAX_CLAIMS_FOR_COMPARISON * 5]:
+        source_id = str(claim.get("source_id") or "unknown")[:MAX_CLAIM_ID_CHARS]
+        bounded_claim = {
+            "id": str(claim.get("id") or "")[:MAX_CLAIM_ID_CHARS],
+            "source_id": source_id,
+            "claim_text": str(claim.get("claim_text") or "")[:MAX_CLAIM_TEXT_CHARS],
+            "evidence_excerpt": str(claim.get("evidence_excerpt") or "")[:MAX_EVIDENCE_CHARS],
+        }
+        claims_by_source.setdefault(source_id, []).append(bounded_claim)
 
     bounded_claims: list[dict[str, str | None]] = []
     source_claims = list(claims_by_source.values())
@@ -90,7 +102,7 @@ def compare_claims_and_identify_gaps(
                     {
                         "role": "user",
                         "content": json.dumps(
-                            {"research_question": question[:1000], "claims": bounded_claims},
+                            {"research_question": question[:MAX_QUESTION_CHARS], "claims": bounded_claims},
                             ensure_ascii=False,
                         ),
                     },
@@ -99,7 +111,7 @@ def compare_claims_and_identify_gaps(
             timeout=45.0,
         )
         response.raise_for_status()
-        payload = response.json()
+        payload = response_json_limited(response, MAX_PROVIDER_RESPONSE_BYTES)
         content = payload["choices"][0]["message"]["content"]
         if not isinstance(content, str):
             raise ValueError("Invalid response content")
