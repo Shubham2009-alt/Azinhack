@@ -17,6 +17,10 @@ class _StreamingResponseAdapter:
     def headers(self) -> Any:
         return getattr(self._response, "headers", {})
 
+    @property
+    def status_code(self) -> int:
+        return int(getattr(self._response, "status_code", 200))
+
     def raise_for_status(self) -> None:
         self._response.raise_for_status()
 
@@ -57,6 +61,7 @@ def adapt_existing_provider_mocks_to_streaming(request: pytest.FixtureRequest, m
         "test_tinyfish_search.py",
         "test_llm_analysis.py",
         "test_comparison_gap_analysis.py",
+        "test_auth.py",
     }:
         return
 
