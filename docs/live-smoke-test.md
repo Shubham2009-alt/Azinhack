@@ -108,3 +108,16 @@ Keep a short record of:
 Capture the UI only after checking that URLs and evidence excerpts are visible. Do not include credentials or private provider logs in screenshots or notes.
 
 This runbook is for live-provider validation. The automated CI tests mock provider calls and do not prove that external credentials or provider compatibility are valid.
+
+
+## 8) Optional deployed integration smoke test
+
+The ordinary CI suite mocks external services. To check the real deployment path across Supabase Auth, database and Redis readiness, TinyFish source discovery/fetch, LLM analysis, results APIs, and user deletion, run the opt-in test against **staging**, not production.
+
+Set `LIVE_API_BASE_URL`, `LIVE_SUPABASE_ACCESS_TOKEN`, and `RUN_LIVE_PROVIDER_TESTS=1` in a private shell/IDE environment or temporary secret store. Do not pass token values as literal command-line arguments or commit them. Then, from `backend/`, run:
+
+```bash
+python -m pytest -q tests/test_live_provider_smoke.py
+```
+
+The test submits one narrow research run, waits up to `LIVE_PROVIDER_SMOKE_TIMEOUT_SECONDS` (default 300, maximum 900), reads the source/report/graph endpoints, and deletes the run. It is skipped in ordinary CI unless explicitly enabled. A test that is skipped or has not been run is not evidence that live credentials and provider integration work.
