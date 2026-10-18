@@ -98,7 +98,9 @@ pytest
 ruff check .
 ```
 
-### 2) Frontend
+### 2) Frontend and Supabase Auth
+
+Create a Supabase project and enable Email authentication. In the Supabase dashboard, configure the allowed site URL and redirect URLs for your frontend deployment. Copy `frontend/.env.example` to `frontend/.env.local`, then set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` using the project's URL and publishable key. The publishable key is intended for browser use; never put a Supabase secret or service-role key in a `VITE_` variable.
 
 In a separate terminal from the repo root:
 
@@ -108,7 +110,7 @@ npm install
 npm run dev
 ```
 
-Open the local Vite URL, usually `http://localhost:5173`.
+Open the local Vite URL, usually `http://localhost:5173`. The frontend keeps the session in `sessionStorage` and attaches the access token to API requests. **Backend token verification and per-run ownership enforcement are a separate follow-up PR; do not treat this frontend foundation alone as protecting API data.**
 
 For build and lint checks:
 
