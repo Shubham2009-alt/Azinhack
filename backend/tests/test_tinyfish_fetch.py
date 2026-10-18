@@ -217,4 +217,4 @@ def test_fetch_discards_unsafe_final_url(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setattr(tinyfish_fetch.httpx, "post", lambda *args, **kwargs: FakeResponse())
     result = fetch_pages(["https://example.org/paper"], purpose="Fetch evidence")
 
-    assert result.results[0].final_url is None
+    assert result.results == []
