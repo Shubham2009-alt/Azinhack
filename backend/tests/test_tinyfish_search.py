@@ -70,6 +70,12 @@ def test_search_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
         ("http://localhost/admin", None),
         ("http://localhost./admin", None),
         ("http://127.0.0.1/admin", None),
+        # Legacy numeric IPv4 forms can resolve to loopback on some clients.
+        ("http://127.1/admin", None),
+        ("http://2130706433/admin", None),
+        ("http://0x7f000001/admin", None),
+        ("http://0177.0.0.1/admin", None),
+        ("http://0x7f.0.0.1/admin", None),
         ("http://192.168.1.10/paper", None),
         ("http://169.254.169.254/latest/meta-data", None),
         ("http://[::1]/admin", None),
