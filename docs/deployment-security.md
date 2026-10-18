@@ -23,3 +23,9 @@ The limiter uses the direct ASGI client address, not arbitrary `X-Forwarded-For`
 ## Health probes
 - `GET /api/health` is liveness and does not check dependencies.
 - `GET /api/health/ready` checks database connectivity and, in production, Redis connectivity for the required rate limiter. It returns 503 if either check fails. It does not verify TinyFish or LLM availability.
+
+## Remote research URL fetching and SSRF boundary
+
+Search results and submitted source URLs are untrusted input. The backend canonicalizes HTTP(S) URLs, rejects credentials, blocks non-global IP literals, and rejects common local hostnames before sending URLs to TinyFish Fetch. These checks are defense in depth, **not a complete SSRF guarantee**: a public-looking hostname can resolve to a private address, DNS answers can change, and the remote fetch provider may follow redirects before the backend can inspect `final_url`. Validating the returned `final_url` happens after the remote request and cannot undo a request already made.
+
+Before production use with untrusted URLs, verify that the remote fetch provider enforces destination-IP checks after DNS resolution and on every redirect, including blocking loopback, private, link-local, and cloud metadata destinations. If those controls cannot be confirmed, do not treat URL canonicalization as sufficient protection; use a fetch service with enforced egress policy or disable arbitrary remote fetching. Never include credentials or sensitive tokens in source URLs. Treat fetched page content as untrusted data, not instructions.
