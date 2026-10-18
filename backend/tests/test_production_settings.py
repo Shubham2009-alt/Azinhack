@@ -15,6 +15,7 @@ def production_settings(**overrides: str) -> Settings:
         "llm_model": "test-model",
         "supabase_url": "https://project-ref.supabase.co",
         "supabase_publishable_key": "sb_publishable_test-key",
+        "redis_url": "rediss://redis.example:6379/0",
     }
     values.update(overrides)
     return Settings(**values)
@@ -142,4 +143,10 @@ def test_production_requires_supabase_auth_configuration() -> None:
     settings = production_settings(supabase_url="", supabase_publishable_key="")
 
     with pytest.raises(ValueError, match="SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY"):
+        settings.validate_deployment_configuration()
+
+
+def test_production_requires_shared_rate_limit_store() -> None:
+    settings = production_settings(redis_url="")
+    with pytest.raises(ValueError, match="REDIS_URL"):
         settings.validate_deployment_configuration()

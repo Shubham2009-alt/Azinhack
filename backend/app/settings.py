@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./researchpilot.db"
     supabase_url: str = ""
     supabase_publishable_key: str = ""
+    redis_url: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -34,12 +35,19 @@ class Settings(BaseSettings):
             "LLM_MODEL": self.llm_model,
             "SUPABASE_URL": self.supabase_url,
             "SUPABASE_PUBLISHABLE_KEY": self.supabase_publishable_key,
+            "REDIS_URL": self.redis_url,
         }
         missing = [name for name, value in required.items() if not value.strip()]
         if missing:
             raise ValueError(
                 "Production configuration is incomplete; set: " + ", ".join(missing)
             )
+
+        redis_url = urlsplit(self.redis_url.strip())
+        if redis_url.scheme not in {"redis", "rediss"} or not redis_url.hostname:
+            raise ValueError("Production REDIS_URL must be an absolute redis:// or rediss:// URL.")
+        if redis_url.fragment or redis_url.query:
+            raise ValueError("Production REDIS_URL must not include a query string or fragment.")
 
         origins = self.frontend_origins
         if not origins:
