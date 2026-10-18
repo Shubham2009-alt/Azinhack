@@ -264,7 +264,7 @@ def get_research_sources(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SourcesResponse:
     """Return source metadata and linked claims, never full stored page text."""
-    run = _get_run_or_404(run_id, db)
+    run = _get_run_or_404(run_id, db, current_user.id)
     sources = list(db.scalars(select(Source).where(Source.run_id == run.id).order_by(Source.title, Source.id)))
     claims = list(db.scalars(select(Claim).where(Claim.run_id == run.id).order_by(Claim.created_at, Claim.id)))
     claims_by_source: dict[str, list[Claim]] = {}
@@ -286,7 +286,7 @@ def get_research_report(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> ResearchReportResponse:
     """Return the report draft and source-linked evidence, including partial results."""
-    run = _get_run_or_404(run_id, db)
+    run = _get_run_or_404(run_id, db, current_user.id)
     report = db.scalar(select(Report).where(Report.run_id == run.id))
     claims = list(db.scalars(select(Claim).where(Claim.run_id == run.id).order_by(Claim.created_at, Claim.id)))
     sources = list(db.scalars(select(Source).where(Source.run_id == run.id).order_by(Source.title, Source.id)))
@@ -326,7 +326,7 @@ def get_research_graph(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> ResearchGraphResponse:
     """Return source/claim nodes and persisted validated relationships."""
-    run = _get_run_or_404(run_id, db)
+    run = _get_run_or_404(run_id, db, current_user.id)
     sources = list(db.scalars(select(Source).where(Source.run_id == run.id)))
     claims = list(db.scalars(select(Claim).where(Claim.run_id == run.id)))
     claim_ids = {claim.id for claim in claims}
