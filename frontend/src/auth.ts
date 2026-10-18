@@ -1,6 +1,8 @@
+import { resolveApiUrl } from "./apiUrl.js";
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL ?? "").replace(/\/+$/, "");
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
 const SESSION_KEY = "researchpilot.supabase.session";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 let authGeneration = 0;
 let refreshInFlight: Promise<AuthSession | null> | null = null;
 
@@ -123,9 +125,10 @@ function refreshSession(current: AuthSession): Promise<AuthSession | null> {
   if (refreshInFlight) return refreshInFlight;
   const request = refreshSessionRequest(current);
   refreshInFlight = request;
-  void request.finally(() => {
+  const clear = () => {
     if (refreshInFlight === request) refreshInFlight = null;
-  });
+  };
+  void request.then(clear, clear);
   return request;
 }
 
@@ -149,7 +152,7 @@ export async function apiFetch(input: RequestInfo | URL, init: RequestInit = {})
   const token = await getValidAccessToken();
   const headers = new Headers(init.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  return fetch(input, { ...init, headers });
+  return fetch(resolveApiUrl(input, API_BASE_URL), { ...init, headers });
 }
 
 export async function signOut(): Promise<void> {
