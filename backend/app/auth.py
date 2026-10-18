@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 import httpx
-from fastapi import Header, HTTPException, status
+from fastapi import Header, HTTPException
 
 from app.settings import settings
 
