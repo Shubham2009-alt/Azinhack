@@ -4,7 +4,11 @@ This is the guided checklist for a real provider-backed demo. It is meant to hel
 
 > Keep credentials in the backend’s local `.env` file only. Never paste them into a terminal command, chat, issue, commit, or screenshot.
 
-## 1) Configure the providers
+## 1) Prepare the database
+
+For local development, the app applies Alembic migrations automatically. For staging/production, set `DATABASE_URL` to PostgreSQL and run `cd backend && alembic upgrade head` once as a release step before starting API replicas. Do not use the SQLite default in production.
+
+## 2) Configure the providers
 
 Set these values in `backend/.env`:
 
@@ -15,7 +19,7 @@ Set these values in `backend/.env`:
 
 Keep the file local and untracked. Restart the backend after any setting changes.
 
-## 2) Start the app
+## 3) Start the app
 
 Open two terminals from the repo root.
 
@@ -47,7 +51,7 @@ Expected response:
 {"status":"ok","service":"researchpilot-api"}
 ```
 
-## 3) Run a focused research question
+## 4) Run a focused research question
 
 In the UI, submit a narrow question such as:
 
@@ -57,7 +61,7 @@ What methods have been evaluated for detecting phishing websites using URL featu
 
 Optionally set a recent publication-year range to keep the search focused. Wait for the run to reach a terminal state; live provider calls can take time.
 
-## 4) Validate the stages
+## 5) Validate the stages
 
 Check that the run behaves like this:
 
@@ -80,7 +84,7 @@ GET /api/research-runs/{run_id}/report
 GET /api/research-runs/{run_id}/graph
 ```
 
-## 5) If something fails
+## 6) If something fails
 
 Common issues and what to check:
 
@@ -90,7 +94,7 @@ Common issues and what to check:
 - No claims / LLM warning — check the LLM key, base URL, model, provider quota, and JSON mode compatibility
 - Partial results — these are valid outcomes; do not fill gaps with invented evidence
 
-## 6) Record a reproducible demo outcome
+## 7) Record a reproducible demo outcome
 
 Keep a short record of:
 
