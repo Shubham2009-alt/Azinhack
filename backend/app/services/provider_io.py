@@ -23,7 +23,7 @@ def response_json_limited(response: Any, max_bytes: int) -> Any:
             raise ProviderResponseTooLarge("Provider response exceeded the byte limit.")
 
     body = getattr(response, "content", None)
-    if isinstance(body, (bytes, bytearray)) and len(body) > max_bytes:
+    if isinstance(body, bytes | bytearray) and len(body) > max_bytes:
         raise ProviderResponseTooLarge("Provider response exceeded the byte limit.")
     if isinstance(body, str) and len(body.encode("utf-8")) > max_bytes:
         raise ProviderResponseTooLarge("Provider response exceeded the byte limit.")
