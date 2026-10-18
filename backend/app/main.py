@@ -6,7 +6,7 @@ from uuid import uuid4
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
@@ -27,6 +27,7 @@ from app.schemas import (
     SourceClaimResponse,
     SourcesResponse,
 )
+from app.services.data_lifecycle import delete_research_run as delete_run_and_evidence
 from app.services.job_worker import run_job_worker
 from app.settings import settings
 
@@ -75,7 +76,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.frontend_origins,
     allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
 
@@ -269,6 +270,23 @@ def get_research_run(
         usable_source_count=usable_source_count,
         warning_summary=run.warning_summary,
     )
+
+
+@app.delete(
+    "/api/research-runs/{run_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["research"],
+)
+def delete_research_run_endpoint(
+    run_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> Response:
+    """Delete an owned research run and all associated evidence and graph records."""
+    run = _get_run_or_404(run_id, db, current_user.id)
+    delete_run_and_evidence(db, run.id)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.get("/api/research-runs/{run_id}/sources", response_model=SourcesResponse, tags=["research"])
