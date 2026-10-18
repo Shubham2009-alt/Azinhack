@@ -80,6 +80,11 @@ def test_search_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
         ("http://169.254.169.254/latest/meta-data", None),
         ("http://[::1]/admin", None),
         ("http://research-db.internal/paper", None),
+        # Restrict remote fetch targets to ordinary web ports.
+        ("http://example.org:8080/paper", None),
+        ("https://example.org:8443/paper", None),
+        # IPv4-mapped IPv6 must not bypass the non-public IP check.
+        ("http://[::ffff:127.0.0.1]/admin", None),
         ("not a URL", None),
     ],
 )
