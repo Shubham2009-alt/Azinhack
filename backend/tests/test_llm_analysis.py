@@ -102,3 +102,89 @@ def test_llm_rejects_oversized_provider_response_before_json_parse(monkeypatch: 
             url="https://example.org/paper",
             content="A sufficiently long source passage for extraction.",
         )
+
+
+def test_verifier_distinguishes_supported_inferred_and_unsupported_claims(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    configure(monkeypatch)
+    from app.services.llm_analysis import ExtractedClaim, verify_source_claims
+
+    claims = [
+        ExtractedClaim(
+            claim_text="Accuracy increased in the reported evaluation.",
+            claim_type="finding",
+            evidence_excerpt="Accuracy increased from 71% to 84%.",
+            confidence_label="moderate",
+        ),
+        ExtractedClaim(
+            claim_text="The method may generalize to rural areas.",
+            claim_type="finding",
+            evidence_excerpt="The authors recommend evaluation in rural areas.",
+            confidence_label="low",
+        ),
+        ExtractedClaim(
+            claim_text="The method is universally effective.",
+            claim_type="finding",
+            evidence_excerpt="This sentence does not exist in the source.",
+            confidence_label="high",
+        ),
+    ]
+    response_body = (
+        '{"decisions":['
+        '{"claim_index":0,"verdict":"supported"},'
+        '{"claim_index":1,"verdict":"inferred"},'
+        '{"claim_index":2,"verdict":"supported"}]}'
+    )
+    monkeypatch.setattr(
+        llm_analysis.httpx,
+        "post",
+        lambda *args, **kwargs: SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {"choices": [{"message": {"content": response_body}}]},
+        ),
+    )
+
+    decisions = verify_source_claims(
+        claims=claims,
+        content=(
+            "Accuracy increased from 71% to 84%. "
+            "The authors recommend evaluation in rural areas."
+        ),
+    )
+    assert decisions == {0: "supported", 1: "inferred", 2: "unsupported"}
+
+
+def test_verifier_fails_closed_when_a_decision_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    configure(monkeypatch)
+    from app.services.llm_analysis import ExtractedClaim, verify_source_claims
+
+    claims = [
+        ExtractedClaim(
+            claim_text="The source directly reports a result.",
+            claim_type="finding",
+            evidence_excerpt="The result was 84%.",
+            confidence_label="moderate",
+        ),
+        ExtractedClaim(
+            claim_text="A second claim needs verification.",
+            claim_type="limitation",
+            evidence_excerpt="Further testing is needed.",
+            confidence_label="low",
+        ),
+    ]
+    monkeypatch.setattr(
+        llm_analysis.httpx,
+        "post",
+        lambda *args, **kwargs: SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {"choices": [{"message": {"content": '{"decisions":[{"claim_index":0,"verdict":"supported"}]}'}}]},
+        ),
+    )
+    decisions = verify_source_claims(
+        claims=claims,
+        content="The result was 84%. Further testing is needed.",
+    )
+    assert decisions == {0: "supported"}
