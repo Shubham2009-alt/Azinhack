@@ -50,7 +50,7 @@ def canonicalize_url(value: str) -> str | None:
     # Some HTTP clients accept legacy numeric IPv4 spellings such as 127.1,
     # 2130706433, or 0x7f000001. Reject numeric-only hostnames rather than
     # relying on this parser's interpretation before handing URLs to a fetcher.
-    if re.fullmatch(r"(?:[0-9]+|0x[0-9a-f]+)(?:\\.(?:[0-9]+|0x[0-9a-f]+))*", hostname):
+    if re.fullmatch(r"(?:[0-9]+|0x[0-9a-f]+)(?:\.(?:[0-9]+|0x[0-9a-f]+))*", hostname):
         return None
     # Search results are untrusted. Do not ask the fetch provider to visit
     # loopback, private, link-local, or other non-public IP addresses.
