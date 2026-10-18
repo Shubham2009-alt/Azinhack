@@ -9,6 +9,7 @@ from app.services.llm_analysis import (
     AnalysisConfigurationError,
     AnalysisProviderError,
     extract_source_claims,
+    verify_source_claims,
 )
 
 
@@ -57,6 +58,7 @@ def run_research_analysis(run_id: str) -> None:
         db.commit()
 
         extracted_count = 0
+        rejected_claim_count = 0
         warnings: list[str] = []
         if unretrieved_source_count:
             warnings.append(
@@ -78,8 +80,27 @@ def run_research_analysis(run_id: str) -> None:
                 warnings.append(f"Claim extraction failed for one source: {source.title[:160]}.")
                 continue
 
-            for item in claims:
+            try:
+                decisions = verify_source_claims(
+                    claims=claims,
+                    content=source.content_text or "",
+                )
+            except AnalysisConfigurationError:
+                warnings.append("Claim verification is not configured; unverified claims were not saved.")
+                continue
+            except AnalysisProviderError:
+                warnings.append(f"Claim verification failed for one source: {source.title[:160]}.")
+                continue
+
+            for index, item in enumerate(claims):
+                # Exact excerpt matching and a separate verification verdict are both
+                # required. Missing/ambiguous verdicts fail closed.
                 if item.evidence_excerpt not in (source.content_text or ""):
+                    rejected_claim_count += 1
+                    continue
+                verdict = decisions.get(index)
+                if verdict not in {"supported", "inferred"}:
+                    rejected_claim_count += 1
                     continue
                 db.add(
                     Claim(
@@ -89,7 +110,7 @@ def run_research_analysis(run_id: str) -> None:
                         claim_type=item.claim_type,
                         evidence_excerpt=item.evidence_excerpt,
                         confidence_label=item.confidence_label,
-                        is_inference=False,
+                        is_inference=verdict == "inferred",
                     )
                 )
                 extracted_count += 1
@@ -205,7 +226,9 @@ def run_research_analysis(run_id: str) -> None:
             "candidate_research_gaps": candidate_gaps,
             "limitations": [
                 "Candidate gaps are hypotheses for further literature review, not proof of novelty.",
-                "Only claims extracted from accessible retrieved pages were considered.",
+                "Only claims with an exact source excerpt and a separate verifier verdict were retained.",
+                "Claims marked as inference require interpretation and are not direct source statements.",
+                "Unverified, unsupported, or ambiguous claims are excluded; verifier errors can reduce recall.",
                 "Comparison quality depends on source coverage and model output.",
             ],
         }
@@ -216,7 +239,8 @@ def run_research_analysis(run_id: str) -> None:
         run.stage = "cross_source_analysis_complete"
         run.status = "partial" if warnings else "succeeded"
         parts = [
-            f"Validated source-grounded claims: {extracted_count}.",
+            f"Claims retained after source verification: {extracted_count}.",
+            f"Claims rejected or left unverified: {rejected_claim_count}.",
             f"Cross-source relations saved: {relation_count}.",
             f"Candidate research gaps saved: {len(candidate_gaps)}.",
             "These gaps are tentative and do not establish global novelty.",
