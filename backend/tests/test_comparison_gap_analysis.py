@@ -6,6 +6,7 @@ from app.services import comparison_gap_analysis as service
 from app.services.comparison_gap_analysis import (
     compare_claims_and_identify_gaps,
 )
+from app.services.llm_analysis import AnalysisProviderError
 
 
 def configure(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -54,3 +55,23 @@ def test_no_claims_does_not_call_provider(monkeypatch: pytest.MonkeyPatch) -> No
     result = compare_claims_and_identify_gaps(question="Question", claims=[])
     assert result.relations == []
     assert result.candidate_gaps == []
+
+
+def test_comparison_rejects_oversized_provider_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    configure(monkeypatch)
+
+    class FakeResponse:
+        content = b"x" * (service.MAX_PROVIDER_RESPONSE_BYTES + 1)
+
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self):
+            pytest.fail("oversized response must be rejected before JSON parsing")
+
+    monkeypatch.setattr(service.httpx, "post", lambda *args, **kwargs: FakeResponse())
+    with pytest.raises(AnalysisProviderError, match="validation"):
+        compare_claims_and_identify_gaps(
+            question="Question",
+            claims=[{"id": "c1", "source_id": "s1", "claim_text": "Claim", "evidence_excerpt": "Evidence"}],
+        )

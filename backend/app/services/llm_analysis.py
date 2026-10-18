@@ -4,10 +4,16 @@ from typing import Literal
 import httpx
 from pydantic import BaseModel, Field, ValidationError
 
+from app.services.provider_io import response_json_limited
 from app.settings import settings
 
 MAX_SOURCE_CHARS = 12_000
 MAX_CLAIMS_PER_SOURCE = 12
+MAX_PROVIDER_RESPONSE_BYTES = 1_000_000
+MAX_QUESTION_CHARS = 1000
+MAX_TITLE_CHARS = 1000
+MAX_URL_CHARS = 2048
+MAX_SOURCE_ID_CHARS = 100
 
 
 class AnalysisConfigurationError(RuntimeError):
@@ -65,8 +71,12 @@ def extract_source_claims(
         "relevant is supported. At most 12 concise claims."
     )
     user_payload = {
-        "research_question": question[:1000],
-        "source": {"id": source_id, "title": title[:1000], "url": url},
+        "research_question": question[:MAX_QUESTION_CHARS],
+        "source": {
+            "id": source_id[:MAX_SOURCE_ID_CHARS],
+            "title": title[:MAX_TITLE_CHARS],
+            "url": url[:MAX_URL_CHARS],
+        },
         "source_text": bounded_content,
     }
     try:
@@ -85,7 +95,7 @@ def extract_source_claims(
             timeout=45.0,
         )
         response.raise_for_status()
-        payload = response.json()
+        payload = response_json_limited(response, MAX_PROVIDER_RESPONSE_BYTES)
     except (httpx.HTTPError, ValueError, AnalysisConfigurationError) as exc:
         raise AnalysisProviderError("LLM analysis request failed.") from exc
 

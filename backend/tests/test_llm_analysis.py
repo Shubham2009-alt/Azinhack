@@ -79,3 +79,26 @@ def test_rejects_malformed_provider_payload(monkeypatch: pytest.MonkeyPatch) -> 
             url="https://example.org",
             content="A sufficiently long source passage for extraction.",
         )
+
+
+def test_llm_rejects_oversized_provider_response_before_json_parse(monkeypatch: pytest.MonkeyPatch) -> None:
+    configure(monkeypatch)
+
+    class FakeResponse:
+        content = b"x" * (llm_analysis.MAX_PROVIDER_RESPONSE_BYTES + 1)
+
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self):
+            pytest.fail("oversized response must be rejected before JSON parsing")
+
+    monkeypatch.setattr(llm_analysis.httpx, "post", lambda *args, **kwargs: FakeResponse())
+    with pytest.raises(AnalysisProviderError, match="request failed"):
+        extract_source_claims(
+            question="Question",
+            source_id="source-1",
+            title="Study",
+            url="https://example.org/paper",
+            content="A sufficiently long source passage for extraction.",
+        )

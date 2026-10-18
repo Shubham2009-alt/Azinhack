@@ -3,11 +3,23 @@ from typing import Any
 
 import httpx
 
+from app.services.provider_io import response_json_limited
 from app.services.tinyfish_search import canonicalize_url
 from app.settings import settings
 
 FETCH_API_URL = "https://api.fetch.tinyfish.ai"
 MAX_CONTENT_CHARS = 60_000
+MAX_PROVIDER_RESPONSE_BYTES = 2_000_000
+MAX_FETCH_ERRORS = 10
+MAX_FETCH_RESULTS_TO_SCAN = 100
+MAX_TITLE_CHARS = 1000
+MAX_DESCRIPTION_CHARS = 2000
+MAX_AUTHOR_CHARS = 300
+MAX_DATE_CHARS = 100
+ALLOWED_FAILURE_CODES = {
+    "FETCH_FAILED", "TIMEOUT", "BLOCKED_URL", "ROBOTS_DENIED", "HTTP_ERROR",
+    "UNSUPPORTED_CONTENT_TYPE", "CONTENT_TOO_LARGE", "PROVIDER_ERROR", "RATE_LIMITED",
+}
 
 
 class TinyFishFetchError(RuntimeError):
@@ -44,6 +56,7 @@ def fetch_pages(urls: list[str], *, purpose: str, limit: int = 10) -> FetchBatch
         raise TinyFishFetchError("TinyFish API key is not configured.")
     normalized_urls: list[str] = []
     seen_urls: set[str] = set()
+    url_limit = max(1, min(limit, 10))
     for url in urls:
         if not isinstance(url, str):
             raise ValueError("Only safe public HTTP(S) URLs can be fetched.")
@@ -53,8 +66,10 @@ def fetch_pages(urls: list[str], *, purpose: str, limit: int = 10) -> FetchBatch
         if normalized_url not in seen_urls:
             seen_urls.add(normalized_url)
             normalized_urls.append(normalized_url)
+            if len(normalized_urls) >= url_limit:
+                break
 
-    bounded_urls = normalized_urls[: max(1, min(limit, 10))]
+    bounded_urls = normalized_urls
     if not bounded_urls:
         return FetchBatchResult(results=[], errors=[])
 
@@ -75,7 +90,7 @@ def fetch_pages(urls: list[str], *, purpose: str, limit: int = 10) -> FetchBatch
             timeout=35.0,
         )
         response.raise_for_status()
-        payload = response.json()
+        payload = response_json_limited(response, MAX_PROVIDER_RESPONSE_BYTES)
     except (httpx.HTTPError, ValueError) as exc:
         raise TinyFishFetchError("TinyFish Fetch request failed.") from exc
 
@@ -90,7 +105,7 @@ def fetch_pages(urls: list[str], *, purpose: str, limit: int = 10) -> FetchBatch
     pages: list[FetchedPage] = []
     failures: list[FetchFailure] = []
     seen_result_urls: set[str] = set()
-    for item in raw_results:
+    for item in raw_results[:MAX_FETCH_RESULTS_TO_SCAN]:
         if not isinstance(item, dict) or not isinstance(item.get("url"), str):
             continue
         result_url = canonicalize_url(item["url"])
@@ -107,28 +122,31 @@ def fetch_pages(urls: list[str], *, purpose: str, limit: int = 10) -> FetchBatch
         text_value = item.get("text")
         if not isinstance(text_value, str):
             text_value = ""
+        if len(pages) >= len(bounded_urls):
+            break
         pages.append(
             FetchedPage(
                 url=result_url,
                 final_url=final_url,
-                title=item.get("title") if isinstance(item.get("title"), str) else None,
-                description=item.get("description") if isinstance(item.get("description"), str) else None,
-                published_date=item.get("published_date") if isinstance(item.get("published_date"), str) else None,
-                author=item.get("author") if isinstance(item.get("author"), str) else None,
+                title=(item["title"][:MAX_TITLE_CHARS] if isinstance(item.get("title"), str) else None),
+                description=(item["description"][:MAX_DESCRIPTION_CHARS] if isinstance(item.get("description"), str) else None),
+                published_date=(item["published_date"][:MAX_DATE_CHARS] if isinstance(item.get("published_date"), str) else None),
+                author=(item["author"][:MAX_AUTHOR_CHARS] if isinstance(item.get("author"), str) else None),
                 text=text_value[:MAX_CONTENT_CHARS],
             )
         )
     seen_error_urls: set[str] = set()
-    for item in raw_errors:
+    for item in raw_errors[:MAX_FETCH_ERRORS]:
         if not isinstance(item, dict) or not isinstance(item.get("url"), str):
             continue
         error_url = canonicalize_url(item["url"])
         if error_url not in requested_urls or error_url in seen_error_urls:
             continue
         seen_error_urls.add(error_url)
-        error_value: Any = item.get("error")
-        if not isinstance(error_value, str):
-            error_value = item.get("code")
-        code = str(error_value or "FETCH_FAILED").strip().upper().replace(" ", "_")[:80]
+        raw_code: Any = item.get("code")
+        if not isinstance(raw_code, str):
+            raw_code = item.get("error")
+        candidate_code = str(raw_code or "FETCH_FAILED").strip().upper().replace(" ", "_")[:80]
+        code = candidate_code if candidate_code in ALLOWED_FAILURE_CODES else "FETCH_FAILED"
         failures.append(FetchFailure(url=error_url, code=code))
     return FetchBatchResult(results=pages, errors=failures)

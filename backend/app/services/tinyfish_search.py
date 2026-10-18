@@ -6,9 +6,13 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import httpx
 
+from app.services.provider_io import response_json_limited
 from app.settings import settings
 
 SEARCH_API_URL = "https://api.search.tinyfish.ai"
+MAX_PROVIDER_RESPONSE_BYTES = 2_000_000
+MAX_SEARCH_RESULTS_TO_SCAN = 100
+MAX_QUERY_CHARS = 1000
 TRACKING_PARAMS = {"fbclid", "gclid", "mc_cid", "mc_eid"}
 
 
@@ -95,6 +99,7 @@ def search_research_papers(
     """Search academic literature using TinyFish's documented Search API."""
     if not query.strip():
         raise ValueError("query must not be blank")
+    bounded_query = query.strip()[:MAX_QUERY_CHARS]
     if year_min is not None and year_max is not None and year_min > year_max:
         raise ValueError("year_min must be less than or equal to year_max")
 
@@ -103,7 +108,7 @@ def search_research_papers(
         raise TinyFishConfigurationError("TinyFish API key is not configured.")
 
     params: dict[str, Any] = {
-        "query": query.strip(),
+        "query": bounded_query,
         "domain_type": "research_paper",
         "page": 0,
     }
@@ -120,7 +125,7 @@ def search_research_papers(
             timeout=20.0,
         )
         response.raise_for_status()
-        payload = response.json()
+        payload = response_json_limited(response, MAX_PROVIDER_RESPONSE_BYTES)
     except (httpx.HTTPError, ValueError) as exc:
         raise TinyFishSearchError("TinyFish search request failed.") from exc
 
@@ -131,7 +136,7 @@ def search_research_papers(
     results: list[PaperSearchResult] = []
     seen_urls: set[str] = set()
     result_limit = max(1, min(limit, 10))
-    for item in raw_results:
+    for item in raw_results[:MAX_SEARCH_RESULTS_TO_SCAN]:
         if not isinstance(item, dict):
             continue
         raw_url = item.get("url")
