@@ -45,9 +45,17 @@ def canonicalize_url(value: str) -> str | None:
     except (AttributeError, ValueError):
         return None
 
-    if parsed.scheme.lower() not in {"http", "https"} or not hostname:
+    scheme = parsed.scheme.lower()
+    if scheme not in {"http", "https"} or not hostname:
         return None
     if parsed.username is not None or parsed.password is not None:
+        return None
+    # Remote research fetches do not need arbitrary service ports. Restrict
+    # targets to standard web ports to reduce the reachable attack surface.
+    if port is not None and not (
+        (scheme == "http" and port == 80)
+        or (scheme == "https" and port == 443)
+    ):
         return None
 
     hostname = hostname.lower().rstrip(".")
@@ -67,7 +75,6 @@ def canonicalize_url(value: str) -> str | None:
     if hostname == "localhost" or hostname.endswith((".localhost", ".local", ".internal")):
         return None
 
-    scheme = parsed.scheme.lower()
     if ":" in hostname and not hostname.startswith("["):
         hostname = f"[{hostname}]"
     netloc = hostname
