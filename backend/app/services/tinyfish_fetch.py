@@ -99,6 +99,11 @@ def fetch_pages(urls: list[str], *, purpose: str, limit: int = 10) -> FetchBatch
         seen_result_urls.add(result_url)
         raw_final_url = item.get("final_url")
         final_url = canonicalize_url(raw_final_url) if isinstance(raw_final_url, str) else None
+        # Do not persist page content when the provider reports an unsafe redirect
+        # destination. This is post-fetch validation, not a substitute for provider
+        # side DNS and redirect protections.
+        if isinstance(raw_final_url, str) and final_url is None:
+            continue
         text_value = item.get("text")
         if not isinstance(text_value, str):
             text_value = ""
