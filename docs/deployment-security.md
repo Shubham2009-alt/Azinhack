@@ -9,9 +9,9 @@ Keep provider credentials in environment variables or a secret manager. Use HTTP
 Set `APP_ENV=production`. Startup validation requires `TINYFISH_API_KEY`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `REDIS_URL`. Frontend and Supabase URLs must be HTTPS; LLM base URL must use HTTPS. Never use a Supabase secret/service-role key in the frontend.
 
 ## Shared rate limiting
-Creating a research run is limited to five requests per direct client IP per ten-minute sliding window. Production uses Redis with an atomic Lua script, sharing the limit across workers and replicas. If Redis is unavailable, requests fail with 503 instead of silently downgrading to a weaker per-process limit. Local development can omit `REDIS_URL` and use an in-memory fallback.
+Creating a research run is limited to five requests per direct client IP and five requests per authenticated account per ten-minute sliding window. Production uses Redis with one atomic Lua script to enforce both limits across workers and replicas. If Redis is unavailable, requests fail with 503 instead of silently downgrading to a weaker per-process limit. Local development can omit `REDIS_URL` and use an in-memory fallback.
 
-The limiter uses the direct ASGI client address, not arbitrary `X-Forwarded-For` input. Configure trusted proxies carefully. IP-based limits can be evaded by rotating addresses, so they complement rather than replace account-level quotas and edge abuse protection. Store Redis credentials in deployment secrets and use `rediss://` when supported.
+The limiter uses the direct ASGI client address, not arbitrary `X-Forwarded-For` input. Configure trusted proxies carefully. Account limits reduce simple IP-rotation bypasses; they complement rather than replace edge abuse protection. Store Redis credentials in deployment secrets and use `rediss://` when supported.
 
 ## Before real users
 1. Configure Supabase Email auth, site URLs, and confirmation policy; set backend `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, and frontend `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.
