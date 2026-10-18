@@ -103,3 +103,9 @@ h1 { font-family: Manrope, sans-serif; font-size: clamp(36px, 5vw, 57px); line-h
   .signout-button { padding: 7px 8px; font-size: 11px; }
   .auth-card { padding: 24px 20px; }
 }
+
+
+.run-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.danger-button{border:1px solid #edc6c0;border-radius:10px;padding:12px 17px;background:#fff7f5;color:#8d3027;font-weight:700;font-size:13px}
+.danger-button:hover:not(:disabled){background:#ffefec;border-color:#dca8a1}
+.danger-button:disabled{opacity:.6;cursor:not-allowed}
