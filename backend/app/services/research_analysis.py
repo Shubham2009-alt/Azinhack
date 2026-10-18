@@ -1,5 +1,7 @@
 from sqlalchemy import delete, func, select
 
+from app.models.research import utc_now
+
 from app.database import SessionLocal
 from app.models import Claim, ClaimRelation, Report, ResearchRun, Source
 from app.services.comparison_gap_analysis import (
@@ -65,6 +67,10 @@ def run_research_analysis(run_id: str) -> None:
                 f"{unretrieved_source_count} source(s) could not be retrieved; results may be partial."
             )
         for source in sources:
+            # Refresh the durable worker heartbeat between bounded provider calls so
+            # stale-run recovery does not misclassify a healthy multi-source analysis.
+            run.updated_at = utc_now()
+            db.commit()
             try:
                 claims = extract_source_claims(
                     question=run.question,
