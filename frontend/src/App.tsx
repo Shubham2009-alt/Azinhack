@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { apiFetch, getSession, isAuthConfigured, restoreSession, signIn, signOut, signUp, type AuthSession } from "./auth";
+import { apiFetch, isAuthConfigured, restoreSession, signIn, signOut, signUp, type AuthSession } from "./auth";
 import { isCurrentRefresh, isCurrentRun } from "./runGuards.js";
 
 type Claim = { id: string; claim_text: string; claim_type: string; evidence_excerpt?: string | null; confidence_label: string; is_inference: boolean };
