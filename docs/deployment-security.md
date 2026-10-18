@@ -5,6 +5,9 @@ ResearchPilot uses Supabase Auth to authenticate API requests. The backend valid
 
 Keep provider credentials in environment variables or a secret manager. Use HTTPS at the public edge, restrict CORS to exact frontend origins, and review retention/deletion before collecting real user research data.
 
+## Production database and migrations
+Production must use PostgreSQL; SQLite is local-development/test-only. Apply versioned Alembic migrations once in the release pipeline with `cd backend && alembic upgrade head` before starting or scaling API replicas. Do not let multiple production replicas race to mutate the schema at startup. Back up the database and test the initial compatibility baseline against a staging copy before first deployment. See [`backend/MIGRATIONS.md`](../backend/MIGRATIONS.md).
+
 ## Production configuration
 Set `APP_ENV=production`. Startup validation requires `TINYFISH_API_KEY`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `REDIS_URL`. Frontend and Supabase URLs must be HTTPS; LLM base URL must use HTTPS. Never use a Supabase secret/service-role key in the frontend.
 
