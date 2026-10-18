@@ -60,6 +60,9 @@ The architecture above describes the target design. The current implementation i
 - Use environment variables for TinyFish credentials, LLM API key, model and optional base URL. Never put secrets in source, frontend environment variables, committed settings, fixtures or logs.
 - Set explicit HTTP timeouts and bounded retries only for retry-safe operations. Handle rate limits and inaccessible sources as structured source statuses.
 - Use typed, schema-constrained LLM outputs where supported. Validate source IDs, excerpts and required fields before persistence.
+- Claim extraction and claim verification are separate model calls. An exact source excerpt is a minimum provenance check, not proof that the claim follows from the excerpt.
+- Persist only claims with an exact excerpt and a verifier verdict of supported or inferred. Store inferred claims with `is_inference=true`; exclude unsupported claims and missing/ambiguous verdicts. Verification is still model-based and may be wrong, so reports must not describe it as a formal factuality guarantee.
+- Verification errors fail closed for that source: do not persist unverified claims, and surface a warning so users can see that evidence coverage may be incomplete.
 - Keep the LLM provider configurable; do not assume credentials or silently fall back to fabricated content.
 - Treat report confidence as a transparent evidence rubric, not a calibrated probability.
 

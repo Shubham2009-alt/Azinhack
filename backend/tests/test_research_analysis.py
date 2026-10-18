@@ -72,6 +72,11 @@ def test_persists_only_validated_source_claims(
     )
     monkeypatch.setattr(
         research_analysis,
+        "verify_source_claims",
+        lambda *, claims, content: {0: "supported", 1: "supported"},
+    )
+    monkeypatch.setattr(
+        research_analysis,
         "compare_claims_and_identify_gaps",
         lambda **kwargs: ComparisonGapResult(relations=[], candidate_gaps=[]),
     )
@@ -175,6 +180,11 @@ def test_persists_cross_source_relations_and_tentative_gaps(
     monkeypatch.setattr(research_analysis, "extract_source_claims", fake_extract)
     monkeypatch.setattr(
         research_analysis,
+        "verify_source_claims",
+        lambda *, claims, content: {index: "supported" for index, _ in enumerate(claims)},
+    )
+    monkeypatch.setattr(
+        research_analysis,
         "compare_claims_and_identify_gaps",
         lambda **kwargs: ComparisonGapResult(
             relations=[
@@ -216,3 +226,58 @@ def test_persists_cross_source_relations_and_tentative_gaps(
         gap = report.structured_sections["candidate_research_gaps"][0]
         assert gap["is_confirmed_novelty"] is False
         assert len(gap["basis_claim_ids"]) == 2
+
+
+def test_persists_inferences_as_inferences_and_drops_unsupported_claims(
+    analysis_db: Callable[[], Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id, _ = create_retrieved_run(analysis_db)
+    source_text = "Accuracy increased from 71% to 84%. Further rural testing is recommended."
+    with analysis_db() as db:
+        source = db.scalar(select(Source).where(Source.run_id == run_id))
+        assert source is not None
+        source.content_text = source_text
+        db.commit()
+
+    monkeypatch.setattr(
+        research_analysis,
+        "extract_source_claims",
+        lambda **kwargs: [
+            ExtractedClaim(
+                claim_text="Accuracy increased in the reported evaluation.",
+                claim_type="finding",
+                evidence_excerpt="Accuracy increased from 71% to 84%.",
+                confidence_label="moderate",
+            ),
+            ExtractedClaim(
+                claim_text="The method may need rural validation.",
+                claim_type="limitation",
+                evidence_excerpt="Further rural testing is recommended.",
+                confidence_label="low",
+            ),
+            ExtractedClaim(
+                claim_text="The method works everywhere.",
+                claim_type="finding",
+                evidence_excerpt="Accuracy increased from 71% to 84%.",
+                confidence_label="high",
+            ),
+        ],
+    )
+    monkeypatch.setattr(
+        research_analysis,
+        "verify_source_claims",
+        lambda **kwargs: {0: "supported", 1: "inferred", 2: "unsupported"},
+    )
+    monkeypatch.setattr(
+        research_analysis,
+        "compare_claims_and_identify_gaps",
+        lambda **kwargs: ComparisonGapResult(relations=[], candidate_gaps=[]),
+    )
+
+    research_analysis.run_research_analysis(run_id)
+
+    with analysis_db() as db:
+        claims = list(db.scalars(select(Claim).where(Claim.run_id == run_id)))
+        assert len(claims) == 2
+        assert sorted(claim.is_inference for claim in claims) == [False, True]
+        assert all(claim.claim_text != "The method works everywhere." for claim in claims)
