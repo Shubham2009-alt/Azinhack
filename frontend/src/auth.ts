@@ -1,6 +1,8 @@
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL ?? "").replace(/\/+$/, "");
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
 const SESSION_KEY = "researchpilot.supabase.session";
+let authGeneration = 0;
+let refreshInFlight: Promise<AuthSession | null> | null = null;
 
 type AuthUser = { id: string; email?: string };
 export type AuthSession = {
@@ -81,25 +83,50 @@ async function authRequest(path: string, body?: Record<string, string>, accessTo
 }
 
 export async function signIn(email: string, password: string): Promise<AuthSession> {
+  const generation = ++authGeneration;
+  refreshInFlight = null;
   const payload = await authRequest("token?grant_type=password", { email, password });
+  if (generation !== authGeneration) throw new Error("Sign-in was superseded by another authentication action.");
   const session = saveSession(payload);
   if (!session) throw new Error("Sign-in succeeded without a session. Check your email confirmation settings.");
   return session;
 }
 
 export async function signUp(email: string, password: string): Promise<AuthSession | null> {
+  const generation = ++authGeneration;
+  refreshInFlight = null;
   const payload = await authRequest("signup", { email, password });
+  if (generation !== authGeneration) throw new Error("Sign-up was superseded by another authentication action.");
   return saveSession(payload);
 }
 
-async function refreshSession(current: AuthSession): Promise<AuthSession | null> {
+async function refreshSessionRequest(current: AuthSession): Promise<AuthSession | null> {
+  const generation = authGeneration;
   try {
     const payload = await authRequest("token?grant_type=refresh_token", { refresh_token: current.refresh_token });
+    // Do not let an older refresh overwrite a newer sign-in or resurrect a signed-out session.
+    if (generation !== authGeneration) return readStoredSession();
+    const latest = readStoredSession();
+    if (!latest || latest.refresh_token !== current.refresh_token) return latest;
     return saveSession(payload);
   } catch {
-    sessionStorage.removeItem(SESSION_KEY);
+    if (generation !== authGeneration) return readStoredSession();
+    const latest = readStoredSession();
+    // A concurrent operation may already have rotated the refresh token.
+    if (latest && latest.refresh_token !== current.refresh_token) return latest;
+    if (latest?.refresh_token === current.refresh_token) sessionStorage.removeItem(SESSION_KEY);
     return null;
   }
+}
+
+function refreshSession(current: AuthSession): Promise<AuthSession | null> {
+  if (refreshInFlight) return refreshInFlight;
+  const request = refreshSessionRequest(current);
+  refreshInFlight = request;
+  void request.finally(() => {
+    if (refreshInFlight === request) refreshInFlight = null;
+  });
+  return request;
 }
 
 export async function restoreSession(): Promise<AuthSession | null> {
@@ -126,6 +153,8 @@ export async function apiFetch(input: RequestInfo | URL, init: RequestInit = {})
 }
 
 export async function signOut(): Promise<void> {
+  ++authGeneration;
+  refreshInFlight = null;
   const current = readStoredSession();
   try {
     if (current?.access_token && isAuthConfigured()) {
