@@ -27,7 +27,7 @@ from app.schemas import (
     SourceClaimResponse,
     SourcesResponse,
 )
-from app.services.data_lifecycle import delete_research_run as delete_run_and_evidence
+from app.services.data_lifecycle import TERMINAL_STATUSES, delete_research_run as delete_run_and_evidence
 from app.services.job_worker import run_job_worker
 from app.settings import settings
 
@@ -284,6 +284,14 @@ def delete_research_run_endpoint(
 ) -> Response:
     """Delete an owned research run and all associated evidence and graph records."""
     run = _get_run_or_404(run_id, db, current_user.id)
+    if run.status.lower() not in TERMINAL_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "RESEARCH_RUN_IN_PROGRESS",
+                "message": "A research run can be deleted after processing stops.",
+            },
+        )
     delete_run_and_evidence(db, run.id)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

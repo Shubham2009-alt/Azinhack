@@ -27,7 +27,7 @@ The limiter uses the direct ASGI client address, not arbitrary `X-Forwarded-For`
 
 The default application retention window is 90 days from run creation. Set `RESEARCH_RETENTION_DAYS` to a value from 1 to 3650 to change it. The background worker periodically removes expired terminal runs in bounded batches; active runs are not removed by automatic retention. Keep the policy aligned with user disclosures and any applicable institutional/legal requirements.
 
-An authenticated owner can delete a run immediately with `DELETE /api/research-runs/{run_id}`. The API removes the run, stored source text and metadata, claims, report, evidence links, and claim relations in one database transaction. Non-owners and unknown IDs receive the same 404 response. The frontend exposes a confirmation-protected delete action for the current run.
+An authenticated owner can delete a terminal run with `DELETE /api/research-runs/{run_id}`. Active or queued runs return HTTP 409 so deletion cannot race with in-flight worker writes. The API removes the run, stored source text and metadata, claims, report, evidence links, and claim relations in one database transaction. Non-owners and unknown IDs receive the same 404 response. The frontend exposes a confirmation-protected delete action for the current run after processing has stopped.
 
 Application deletion does not instantly erase copies in database backups, provider logs, hosting logs, or external backups. Define backup expiry and provider-side logging/retention separately, avoid putting source content or credentials into logs, and test a deletion against a non-production copy before production rollout.
 

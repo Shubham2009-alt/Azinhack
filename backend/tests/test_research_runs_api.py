@@ -175,3 +175,20 @@ def test_user_cannot_read_another_users_run(client: TestClient) -> None:
     )
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "RESEARCH_RUN_NOT_FOUND"
+
+
+def test_active_research_run_cannot_be_deleted_while_worker_is_running(client: TestClient) -> None:
+    created = client.post(
+        "/api/research-runs",
+        json={"question": "Active run deletion safety test"},
+    )
+    assert created.status_code == 202
+    run_id = created.json()["run_id"]
+
+    response = client.delete(f"/api/research-runs/{run_id}")
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "RESEARCH_RUN_IN_PROGRESS"
+    preserved = client.get(f"/api/research-runs/{run_id}")
+    assert preserved.status_code == 200
+    assert preserved.json()["status"] == "queued"
