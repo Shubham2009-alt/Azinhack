@@ -23,6 +23,7 @@ function ResearchWorkspace({ session, onSignOut }: { session: AuthSession; onSig
   const [report, setReport] = useState<Report | null>(null);
   const [graph, setGraph] = useState<Graph | null>(null);
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [tab, setTab] = useState<"report" | "sources" | "graph">("report");
   const [selected, setSelected] = useState("");
   const activeRunId = useRef("");
@@ -87,6 +88,32 @@ function ResearchWorkspace({ session, onSignOut }: { session: AuthSession; onSig
     finally { setBusy(false); }
   }
 
+  async function deleteCurrentRun() {
+    if (!runId || deleting) return;
+    if (!window.confirm("Delete this research run and all associated evidence?")) return;
+    setDeleting(true);
+    setNotice("");
+    try {
+      const response = await apiFetch("/api/research-runs/" + runId, { method: "DELETE" });
+      if (!response.ok) {
+        setNotice(response.status === 404 ? "This research run no longer exists." : "Could not delete this research run. Try again.");
+        return;
+      }
+      activeRunId.current = "";
+      refreshGeneration.current += 1;
+      setRunId("");
+      setRun(null);
+      setReport(null);
+      setGraph(null);
+      setSelected("");
+      setNotice("Research run and associated evidence deleted.");
+    } catch {
+      setNotice("Could not reach the API to delete this research run.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const sections = report?.structured_sections ?? {};
   const comparisons = Array.isArray(sections.cross_source_comparisons) ? sections.cross_source_comparisons as Record<string, unknown>[] : [];
   const gaps = Array.isArray(sections.candidate_research_gaps) ? sections.candidate_research_gaps as Record<string, unknown>[] : [];
@@ -111,7 +138,7 @@ function ResearchWorkspace({ session, onSignOut }: { session: AuthSession; onSig
       {!runId && <div className="examples"><p>NEED A STARTING POINT?</p><div className="example-list">{examples.map(item => <button className="example-chip" key={item} type="button" onClick={() => { setQuestion(item); setNotice(""); }}>{item}<span aria-hidden="true">↗</span></button>)}</div></div>}
     </section>
     {runId && <section className="results-section" aria-live="polite">
-      <div className="results-heading"><div><p className="eyebrow">RESEARCH WORKSPACE</p><h2>Your research run</h2><p className="muted run-question">{run?.question ?? question}</p></div><button className="secondary-button" type="button" onClick={() => void refresh(runId)}>Refresh results</button></div>
+      <div className="results-heading"><div><p className="eyebrow">RESEARCH WORKSPACE</p><h2>Your research run</h2><p className="muted run-question">{run?.question ?? question}</p></div><div className="run-actions"><button className="secondary-button" type="button" onClick={() => void refresh(runId)}>Refresh results</button><button className="danger-button" type="button" disabled={deleting} onClick={() => void deleteCurrentRun()}>{deleting ? "Deleting…" : "Delete run"}</button></div></div>
       <div className="progress-card"><div className="progress-top"><span className="status-label"><span className={"status-dot " + (run?.status === "partial" ? "warning-dot" : "")} />{pretty(run?.status ?? "queued")}</span><span>{run?.progress ?? 0}%</span></div><div className="progress-track"><span style={{ width: Math.max(0, Math.min(100, run?.progress ?? 0)) + "%" }} /></div><div className="progress-bottom"><span>{pretty(run?.stage ?? "waiting to start")}</span><span>{run?.usable_source_count ?? 0} usable / {run?.source_count ?? 0} sources</span></div>{run?.warning_summary && <p className="warning-message">{run.warning_summary}</p>}{run && terminal(run.status) && <p className="muted completion-note">Processing has stopped. Results may be partial; review the evidence and limitations below.</p>}</div>
       <nav className="result-tabs" aria-label="Research result views"><button className={tab === "report" ? "active" : ""} onClick={() => setTab("report")} type="button">Report <span>{report?.claims.length ?? 0}</span></button><button className={tab === "sources" ? "active" : ""} onClick={() => setTab("sources")} type="button">Sources <span>{sources.length}</span></button><button className={tab === "graph" ? "active" : ""} onClick={() => setTab("graph")} type="button">Evidence graph <span>{nodes.length}</span></button></nav>
       {tab === "report" && <div className="result-content"><div className="section-heading"><div><p className="eyebrow">SYNTHESIS</p><h3>Evidence report</h3></div><span className="subtle-tag">Draft · source-linked</span></div>

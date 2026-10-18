@@ -7,7 +7,9 @@ from sqlalchemy import select, update
 from app.database import SessionLocal
 from app.models import ResearchRun
 from app.models.research import utc_now
+from app.services.data_lifecycle import purge_expired_runs
 from app.services.research_discovery import run_research_discovery
+from app.settings import settings
 
 logger = logging.getLogger("researchpilot.jobs")
 POLL_INTERVAL_SECONDS = 1.0
@@ -76,10 +78,21 @@ def _mark_worker_failure(run_id: str) -> None:
 
 
 async def run_job_worker() -> None:
-    """Poll the database-backed queue; queued jobs survive API process restarts."""
+    """Poll the persisted queue and periodically enforce the research-data lifecycle."""
+    loop = asyncio.get_running_loop()
+    next_retention_cleanup = 0.0
     while True:
         try:
             fail_stale_runs()
+            if loop.time() >= next_retention_cleanup:
+                try:
+                    removed = await asyncio.to_thread(purge_expired_runs)
+                    if removed:
+                        logger.info("Research retention removed %d expired runs", removed)
+                except Exception:
+                    # Retention failures must be visible without taking down the queue worker.
+                    logger.exception("Research retention cleanup failed")
+                next_retention_cleanup = loop.time() + settings.retention_cleanup_interval_seconds
             run_id = claim_next_run()
             if run_id is None:
                 await asyncio.sleep(POLL_INTERVAL_SECONDS)
