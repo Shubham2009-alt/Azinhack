@@ -15,6 +15,6 @@ test("joins a separately hosted API base URL without duplicate slashes", () => {
 
 test("does not rewrite non-API paths or URL objects", () => {
   assert.equal(resolveApiUrl("/assets/logo.svg", "https://api.example.com"), "/assets/logo.svg");
-  const url = new URL("https://example.com/api/research-runs");
+  const url = Object.freeze({ href: "https://example.com/api/research-runs" });
   assert.equal(resolveApiUrl(url, "https://api.example.com"), url);
 });
