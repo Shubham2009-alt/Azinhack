@@ -1,11 +1,13 @@
 from collections.abc import Generator
 
 import pytest
+from fastapi import Request
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+from app.auth import AuthenticatedUser, get_current_user
 from app.database import get_db
 from app.main import app
 from app.models import Base
@@ -34,6 +36,11 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]
             yield session
 
     app.dependency_overrides[get_db] = override_get_db
+
+    def override_current_user(request: Request) -> AuthenticatedUser:
+        return AuthenticatedUser(id=request.headers.get("x-test-user-id", "00000000-0000-0000-0000-000000000001"))
+
+    app.dependency_overrides[get_current_user] = override_current_user
     monkeypatch.setattr("app.main.run_research_discovery", lambda _run_id: None)
     with TestClient(app) as test_client:
         yield test_client
@@ -149,3 +156,17 @@ def test_request_body_over_limit_is_rejected(client: TestClient) -> None:
     assert response.status_code == 413
     assert response.json()["error"]["code"] == "REQUEST_TOO_LARGE"
     assert response.headers["x-content-type-options"] == "nosniff"
+
+
+
+def test_user_cannot_read_another_users_run(client: TestClient) -> None:
+    created = client.post("/api/research-runs", json={"question": "Owner-specific research run"})
+    assert created.status_code == 202
+    run_id = created.json()["run_id"]
+
+    response = client.get(
+        f"/api/research-runs/{run_id}",
+        headers={"x-test-user-id": "00000000-0000-0000-0000-000000000002"},
+    )
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "RESEARCH_RUN_NOT_FOUND"

@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
+from app.auth import AuthenticatedUser, get_current_user
 from app.database import engine, get_db, init_db
 from app.models import Claim, ClaimRelation, Report, ResearchRun, Source
 from app.rate_limit import enforce_create_run_rate_limit
@@ -125,9 +126,14 @@ async def unhandled_exception_middleware(request: Request, call_next):
         )
 
 
-def _get_run_or_404(run_id: str, db: Session) -> ResearchRun:
+def _get_run_or_404(run_id: str, db: Session, user_id: str) -> ResearchRun:
     run = db.get(ResearchRun, run_id)
     if run is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "RESEARCH_RUN_NOT_FOUND", "message": "No research run exists for this ID."},
+        )
+    if run.owner_id != user_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "RESEARCH_RUN_NOT_FOUND", "message": "No research run exists for this ID."},
@@ -199,9 +205,11 @@ def create_research_run(
     payload: CreateResearchRunRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> CreateResearchRunResponse:
     """Persist a validated research request and schedule source discovery."""
     run = ResearchRun(
+        owner_id=current_user.id,
         question=payload.question.strip(),
         year_min=payload.year_min,
         year_max=payload.year_max,
@@ -221,9 +229,13 @@ def create_research_run(
     response_model=ResearchRunStatusResponse,
     tags=["research"],
 )
-def get_research_run(run_id: str, db: Session = Depends(get_db)) -> ResearchRunStatusResponse:
+def get_research_run(
+    run_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> ResearchRunStatusResponse:
     """Return persisted status and source counts for a research run."""
-    run = _get_run_or_404(run_id, db)
+    run = _get_run_or_404(run_id, db, current_user.id)
     source_count = db.scalar(select(func.count(Source.id)).where(Source.run_id == run.id)) or 0
     usable_source_count = db.scalar(
         select(func.count(Source.id)).where(
@@ -246,9 +258,13 @@ def get_research_run(run_id: str, db: Session = Depends(get_db)) -> ResearchRunS
 
 
 @app.get("/api/research-runs/{run_id}/sources", response_model=SourcesResponse, tags=["research"])
-def get_research_sources(run_id: str, db: Session = Depends(get_db)) -> SourcesResponse:
+def get_research_sources(
+    run_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> SourcesResponse:
     """Return source metadata and linked claims, never full stored page text."""
-    run = _get_run_or_404(run_id, db)
+    run = _get_run_or_404(run_id, db, current_user.id)
     sources = list(db.scalars(select(Source).where(Source.run_id == run.id).order_by(Source.title, Source.id)))
     claims = list(db.scalars(select(Claim).where(Claim.run_id == run.id).order_by(Claim.created_at, Claim.id)))
     claims_by_source: dict[str, list[Claim]] = {}
@@ -264,9 +280,13 @@ def get_research_sources(run_id: str, db: Session = Depends(get_db)) -> SourcesR
 
 
 @app.get("/api/research-runs/{run_id}/report", response_model=ResearchReportResponse, tags=["research"])
-def get_research_report(run_id: str, db: Session = Depends(get_db)) -> ResearchReportResponse:
+def get_research_report(
+    run_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> ResearchReportResponse:
     """Return the report draft and source-linked evidence, including partial results."""
-    run = _get_run_or_404(run_id, db)
+    run = _get_run_or_404(run_id, db, current_user.id)
     report = db.scalar(select(Report).where(Report.run_id == run.id))
     claims = list(db.scalars(select(Claim).where(Claim.run_id == run.id).order_by(Claim.created_at, Claim.id)))
     sources = list(db.scalars(select(Source).where(Source.run_id == run.id).order_by(Source.title, Source.id)))
@@ -300,9 +320,13 @@ def get_research_report(run_id: str, db: Session = Depends(get_db)) -> ResearchR
 
 
 @app.get("/api/research-runs/{run_id}/graph", response_model=ResearchGraphResponse, tags=["research"])
-def get_research_graph(run_id: str, db: Session = Depends(get_db)) -> ResearchGraphResponse:
+def get_research_graph(
+    run_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> ResearchGraphResponse:
     """Return source/claim nodes and persisted validated relationships."""
-    run = _get_run_or_404(run_id, db)
+    run = _get_run_or_404(run_id, db, current_user.id)
     sources = list(db.scalars(select(Source).where(Source.run_id == run.id)))
     claims = list(db.scalars(select(Claim).where(Claim.run_id == run.id)))
     claim_ids = {claim.id for claim in claims}

@@ -13,6 +13,8 @@ def production_settings(**overrides: str) -> Settings:
         "llm_api_key": "llm-test-key",
         "llm_base_url": "https://api.example/v1",
         "llm_model": "test-model",
+        "supabase_url": "https://project-ref.supabase.co",
+        "supabase_publishable_key": "sb_publishable_test-key",
     }
     values.update(overrides)
     return Settings(**values)
@@ -116,4 +118,28 @@ def test_production_rejects_invalid_llm_base_url_ports(base_url: str) -> None:
     settings = production_settings(llm_base_url=base_url)
 
     with pytest.raises(ValueError, match="LLM_BASE_URL must include a valid port"):
+        settings.validate_deployment_configuration()
+
+
+
+@pytest.mark.parametrize(
+    "supabase_url",
+    [
+        "http://project-ref.supabase.co",
+        "https://user:password@project-ref.supabase.co",
+        "https://project-ref.supabase.co/auth/v1",
+        "https://project-ref.supabase.co?debug=true",
+    ],
+)
+def test_production_rejects_unsafe_supabase_urls(supabase_url: str) -> None:
+    settings = production_settings(supabase_url=supabase_url)
+
+    with pytest.raises(ValueError, match="SUPABASE_URL"):
+        settings.validate_deployment_configuration()
+
+
+def test_production_requires_supabase_auth_configuration() -> None:
+    settings = production_settings(supabase_url="", supabase_publishable_key="")
+
+    with pytest.raises(ValueError, match="SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY"):
         settings.validate_deployment_configuration()

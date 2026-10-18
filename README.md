@@ -129,6 +129,8 @@ Recommended values:
 - `LLM_API_KEY`
 - `LLM_BASE_URL`
 - `LLM_MODEL`
+- `SUPABASE_URL`
+- `SUPABASE_PUBLISHABLE_KEY`
 
 A few good defaults to keep in mind:
 
