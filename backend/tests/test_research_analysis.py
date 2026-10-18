@@ -72,6 +72,11 @@ def test_persists_only_validated_source_claims(
     )
     monkeypatch.setattr(
         research_analysis,
+        "verify_source_claims",
+        lambda *, claims, content: {0: "supported", 1: "supported"},
+    )
+    monkeypatch.setattr(
+        research_analysis,
         "compare_claims_and_identify_gaps",
         lambda **kwargs: ComparisonGapResult(relations=[], candidate_gaps=[]),
     )
@@ -173,6 +178,11 @@ def test_persists_cross_source_relations_and_tentative_gaps(
         ]
 
     monkeypatch.setattr(research_analysis, "extract_source_claims", fake_extract)
+    monkeypatch.setattr(
+        research_analysis,
+        "verify_source_claims",
+        lambda *, claims, content: {index: "supported" for index, _ in enumerate(claims)},
+    )
     monkeypatch.setattr(
         research_analysis,
         "compare_claims_and_identify_gaps",
