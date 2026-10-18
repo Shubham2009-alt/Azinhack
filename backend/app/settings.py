@@ -1,5 +1,6 @@
 from urllib.parse import urlsplit
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +14,9 @@ class Settings(BaseSettings):
     llm_base_url: str = ""
     llm_model: str = ""
     database_url: str = "sqlite:///./researchpilot.db"
+    run_migrations_on_startup: bool = False
+    research_retention_days: int = Field(default=90, ge=1, le=3650)
+    retention_cleanup_interval_seconds: int = Field(default=3600, ge=60, le=86400)
     supabase_url: str = ""
     supabase_publishable_key: str = ""
     redis_url: str = ""
@@ -28,7 +32,22 @@ class Settings(BaseSettings):
         if self.app_env.strip().lower() not in {"production", "prod"}:
             return
 
+        database_url = urlsplit(self.database_url.strip())
+        if database_url.scheme not in {"postgresql", "postgresql+psycopg"} or not database_url.hostname:
+            raise ValueError(
+                "Production DATABASE_URL must be an absolute PostgreSQL URL; SQLite is development-only."
+            )
+        if database_url.fragment:
+            raise ValueError("Production DATABASE_URL must not include a fragment.")
+        try:
+            database_port = database_url.port
+        except ValueError as exc:
+            raise ValueError("Production DATABASE_URL must include a valid port if specified.") from exc
+        if database_port is not None and not 1 <= database_port <= 65535:
+            raise ValueError("Production DATABASE_URL must include a valid port if specified.")
+
         required = {
+            "DATABASE_URL": self.database_url,
             "TINYFISH_API_KEY": self.tinyfish_api_key,
             "LLM_API_KEY": self.llm_api_key,
             "LLM_BASE_URL": self.llm_base_url,

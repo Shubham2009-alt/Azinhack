@@ -1,26 +1,35 @@
 from collections.abc import Generator
+from pathlib import Path
 
-from sqlalchemy import create_engine, event, inspect, text
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.models import Base
 from app.settings import settings
 
 
+def _normalize_database_url(database_url: str) -> str:
+    """Use Psycopg 3 for PostgreSQL URLs; SQLite remains suitable for local tests."""
+    if database_url.startswith("postgres://"):
+        return database_url.replace("postgres://", "postgresql+psycopg://", 1)
+    if database_url.startswith("postgresql://"):
+        return database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return database_url
+
+
 def build_engine(database_url: str | None = None) -> Engine:
-    url = database_url or settings.database_url
+    url = _normalize_database_url(database_url or settings.database_url)
     connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
-    engine = create_engine(url, connect_args=connect_args, pool_pre_ping=True)
+    db_engine = create_engine(url, connect_args=connect_args, pool_pre_ping=True)
 
     if url.startswith("sqlite"):
-        @event.listens_for(engine, "connect")
+        @event.listens_for(db_engine, "connect")
         def enable_sqlite_foreign_keys(dbapi_connection: object, _connection_record: object) -> None:
             cursor = dbapi_connection.cursor()  # type: ignore[attr-defined]
             cursor.execute("PRAGMA foreign_keys=ON")
             cursor.close()
 
-    return engine
+    return db_engine
 
 
 engine = build_engine()
@@ -36,21 +45,19 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
-    """Create tables and apply small additive compatibility migrations for the MVP."""
-    Base.metadata.create_all(bind=engine)
+    """Apply versioned Alembic migrations.
 
-    # create_all does not add columns to an existing table. Keep databases created
-    # before source-content storage usable without dropping collected research runs.
-    inspector = inspect(engine)
-    if "research_runs" in inspector.get_table_names():
-        run_columns = {column["name"] for column in inspector.get_columns("research_runs")}
-        if "owner_id" not in run_columns:
-            with engine.begin() as connection:
-                connection.execute(text("ALTER TABLE research_runs ADD COLUMN owner_id VARCHAR(36)"))
+    Development startup calls this by default. Production deployments should run
+    the migration command as a single release step before starting application
+    replicas, rather than allowing each replica to race on schema changes.
+    """
+    from alembic import command
+    from alembic.config import Config
 
-    inspector = inspect(engine)
-    if "sources" in inspector.get_table_names():
-        source_columns = {column["name"] for column in inspector.get_columns("sources")}
-        if "content_text" not in source_columns:
-            with engine.begin() as connection:
-                connection.execute(text("ALTER TABLE sources ADD COLUMN content_text TEXT"))
+    config_path = Path(__file__).resolve().parents[1] / "alembic.ini"
+    config = Config(str(config_path))
+    # ConfigParser treats percent signs as interpolation syntax.
+    config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
+    with engine.connect() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "head")

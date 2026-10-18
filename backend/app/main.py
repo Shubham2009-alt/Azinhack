@@ -34,7 +34,8 @@ from app.settings import settings
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     settings.validate_deployment_configuration()
-    init_db()
+    if settings.app_env.strip().lower() not in {"production", "prod"} or settings.run_migrations_on_startup:
+        init_db()
     worker_task = asyncio.create_task(run_job_worker(), name="research-job-worker")
     try:
         yield
