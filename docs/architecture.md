@@ -79,3 +79,12 @@ Nodes represent claims and sources; edges represent supports, contradicts, quali
 
 ## Verification
 Mock external providers for deterministic tests. Keep a small manually reviewed evaluation set and record sample size. Measure citation support, extraction completeness, contradiction quality, candidate-gap relevance, end-to-end completion and latency before claiming quality or performance.
+
+
+## Durable research job execution
+
+Research-run requests are persisted as `queued` rows before the API returns HTTP 202. A lifespan-managed worker polls the database and atomically changes one queued row to `starting` before processing it; competing workers cannot claim the same row through the same conditional update. This removes reliance on FastAPI `BackgroundTasks`, whose work is tied to the serving process.
+
+The database is the queue of record, so queued work remains available after an API restart. Active runs that have not updated their heartbeat/stage timestamp for 30 minutes are marked failed with `WORKER_INTERRUPTED` instead of remaining active indefinitely. Unexpected worker exceptions are recorded with a generic error code and safe user-facing message; details stay in server logs. To retry a failed run, create a new research run.
+
+This is a lightweight database-backed worker, not a replacement for a dedicated broker/worker deployment at higher scale. Run processing is synchronous within one worker slot per API process; multiple API processes can compete safely for queued rows. Long-running provider operations should update the run state periodically so stale-run detection does not misclassify a healthy job. Schema changes for this feature were avoided; versioned migrations and explicit attempt counters remain part of the production database-hardening step.
