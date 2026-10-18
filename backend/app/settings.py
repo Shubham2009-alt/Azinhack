@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     llm_base_url: str = ""
     llm_model: str = ""
     database_url: str = "sqlite:///./researchpilot.db"
+    supabase_url: str = ""
+    supabase_publishable_key: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -30,6 +32,8 @@ class Settings(BaseSettings):
             "LLM_API_KEY": self.llm_api_key,
             "LLM_BASE_URL": self.llm_base_url,
             "LLM_MODEL": self.llm_model,
+            "SUPABASE_URL": self.supabase_url,
+            "SUPABASE_PUBLISHABLE_KEY": self.supabase_publishable_key,
         }
         missing = [name for name, value in required.items() if not value.strip()]
         if missing:
@@ -48,6 +52,17 @@ class Settings(BaseSettings):
                 raise ValueError("Production FRONTEND_ORIGIN values must use HTTPS.")
             if hostname in {"localhost", "127.0.0.1", "::1"} or hostname.endswith(".localhost"):
                 raise ValueError("Production FRONTEND_ORIGIN must not point to localhost.")
+
+        supabase_url = urlsplit(self.supabase_url.strip())
+        supabase_hostname = (supabase_url.hostname or "").lower()
+        if supabase_url.scheme != "https" or not supabase_hostname:
+            raise ValueError("Production SUPABASE_URL must be an absolute HTTPS URL.")
+        if supabase_url.username or supabase_url.password or supabase_url.path not in {"", "/"}:
+            raise ValueError("Production SUPABASE_URL must not include credentials or a URL path.")
+        if supabase_url.query or supabase_url.fragment:
+            raise ValueError("Production SUPABASE_URL must not include a query string or fragment.")
+        if supabase_hostname in {"localhost", "127.0.0.1", "::1"} or supabase_hostname.endswith(".localhost"):
+            raise ValueError("Production SUPABASE_URL must not point to localhost.")
 
         provider_url = urlsplit(self.llm_base_url.strip())
         if provider_url.scheme != "https" or not provider_url.hostname:
