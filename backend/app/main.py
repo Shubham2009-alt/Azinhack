@@ -1,8 +1,9 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -26,7 +27,7 @@ from app.schemas import (
     SourceClaimResponse,
     SourcesResponse,
 )
-from app.services.research_discovery import run_research_discovery
+from app.services.job_worker import run_job_worker
 from app.settings import settings
 
 
@@ -34,7 +35,15 @@ from app.settings import settings
 async def lifespan(_app: FastAPI):
     settings.validate_deployment_configuration()
     init_db()
-    yield
+    worker_task = asyncio.create_task(run_job_worker(), name="research-job-worker")
+    try:
+        yield
+    finally:
+        worker_task.cancel()
+        try:
+            await worker_task
+        except asyncio.CancelledError:
+            pass
 
 
 logger = logging.getLogger("researchpilot.api")
@@ -209,7 +218,6 @@ def readiness_check() -> JSONResponse:
 )
 def create_research_run(
     payload: CreateResearchRunRequest,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> CreateResearchRunResponse:
@@ -226,7 +234,6 @@ def create_research_run(
     db.add(run)
     db.commit()
     db.refresh(run)
-    background_tasks.add_task(run_research_discovery, run.id)
     return CreateResearchRunResponse(run_id=run.id, status="queued")
 
 
