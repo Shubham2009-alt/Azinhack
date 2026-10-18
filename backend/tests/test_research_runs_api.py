@@ -1,5 +1,7 @@
 from collections.abc import Generator
 
+import asyncio
+
 import pytest
 from fastapi import Request
 from fastapi.testclient import TestClient
@@ -41,7 +43,10 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]
         return AuthenticatedUser(id=request.headers.get("x-test-user-id", "00000000-0000-0000-0000-000000000001"))
 
     app.dependency_overrides[get_current_user] = override_current_user
-    monkeypatch.setattr("app.main.run_research_discovery", lambda _run_id: None)
+    async def idle_worker() -> None:
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr("app.main.run_job_worker", idle_worker)
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
