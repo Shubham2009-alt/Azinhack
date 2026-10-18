@@ -55,6 +55,7 @@ def adapt_existing_provider_mocks_to_streaming(request: pytest.FixtureRequest, m
         "test_tinyfish_fetch.py",
         "test_tinyfish_search.py",
         "test_llm_analysis.py",
+        "test_comparison_gap_analysis.py",
     }:
         return
 
