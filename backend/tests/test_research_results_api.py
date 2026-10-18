@@ -1,11 +1,13 @@
 from collections.abc import Generator
 
 import pytest
+from fastapi import Request
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+from app.auth import AuthenticatedUser, get_current_user
 from app.database import get_db
 from app.main import app
 from app.models import Base, Claim, ClaimRelation, Report, ResearchRun, Source
@@ -25,6 +27,11 @@ def client_and_session(monkeypatch: pytest.MonkeyPatch) -> Generator[tuple[TestC
         yield session
 
     app.dependency_overrides[get_db] = override_get_db
+
+    def override_current_user(request: Request) -> AuthenticatedUser:
+        return AuthenticatedUser(id=request.headers.get("x-test-user-id", "00000000-0000-0000-0000-000000000001"))
+
+    app.dependency_overrides[get_current_user] = override_current_user
     monkeypatch.setattr("app.main.run_research_discovery", lambda _run_id: None)
     with TestClient(app) as test_client:
         yield test_client, session
@@ -35,6 +42,7 @@ def client_and_session(monkeypatch: pytest.MonkeyPatch) -> Generator[tuple[TestC
 
 def seed_run(session: Session) -> tuple[ResearchRun, Source, Source, Claim, Claim]:
     run = ResearchRun(
+        owner_id="00000000-0000-0000-0000-000000000001",
         question="How well do low-cost sensors detect urban air pollution?",
         status="partial",
         stage="cross_source_analysis_complete",
@@ -158,3 +166,17 @@ def test_unknown_run_returns_404(client_and_session, endpoint: str) -> None:
         f"/api/research-runs/00000000-0000-0000-0000-000000000000/{endpoint}"
     )
     assert response.status_code == 404
+
+
+
+@pytest.mark.parametrize("endpoint", ["", "/sources", "/report", "/graph"])
+def test_another_user_cannot_read_run_or_results(client_and_session, endpoint: str) -> None:
+    client, db = client_and_session
+    run, _, _, _, _ = seed_run(db)
+
+    response = client.get(
+        f"/api/research-runs/{run.id}{endpoint}",
+        headers={"x-test-user-id": "00000000-0000-0000-0000-000000000002"},
+    )
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "RESEARCH_RUN_NOT_FOUND"
