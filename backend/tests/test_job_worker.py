@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, update
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -55,11 +55,14 @@ def test_claim_next_run_atomically_moves_queued_run_to_starting(monkeypatch) -> 
 def test_stale_active_runs_are_failed_with_safe_recovery_message(monkeypatch) -> None:
     engine, factory = isolated_db(monkeypatch)
     try:
-        run_id = make_run(
-            factory,
-            status="analyzing",
-            updated_at=utc_now() - timedelta(hours=1),
-        )
+        run_id = make_run(factory, status="analyzing")
+        with factory() as db:
+            db.execute(
+                update(ResearchRun)
+                .where(ResearchRun.id == run_id)
+                .values(updated_at=utc_now() - timedelta(hours=1))
+            )
+            db.commit()
         assert job_worker.fail_stale_runs() == 1
         with factory() as db:
             run = db.get(ResearchRun, run_id)
