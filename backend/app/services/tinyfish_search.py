@@ -6,7 +6,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import httpx
 
-from app.services.provider_io import response_json_limited
+from app.services.provider_io import request_json_limited
 from app.settings import settings
 
 SEARCH_API_URL = "https://api.search.tinyfish.ai"
@@ -125,14 +125,14 @@ def search_research_papers(
         params["pub_year_max"] = year_max
 
     try:
-        response = httpx.get(
+        payload = request_json_limited(
+            "GET",
             SEARCH_API_URL,
+            max_bytes=MAX_PROVIDER_RESPONSE_BYTES,
             params=params,
             headers={"X-API-Key": api_key},
             timeout=20.0,
         )
-        response.raise_for_status()
-        payload = response_json_limited(response, MAX_PROVIDER_RESPONSE_BYTES)
     except (httpx.HTTPError, ValueError) as exc:
         raise TinyFishSearchError("TinyFish search request failed.") from exc
 

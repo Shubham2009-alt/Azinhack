@@ -3,7 +3,7 @@ from typing import Any
 
 import httpx
 
-from app.services.provider_io import response_json_limited
+from app.services.provider_io import request_json_limited
 from app.services.tinyfish_search import canonicalize_url
 from app.settings import settings
 
@@ -74,8 +74,10 @@ def fetch_pages(urls: list[str], *, purpose: str, limit: int = 10) -> FetchBatch
         return FetchBatchResult(results=[], errors=[])
 
     try:
-        response = httpx.post(
+        payload = request_json_limited(
+            "POST",
             FETCH_API_URL,
+            max_bytes=MAX_PROVIDER_RESPONSE_BYTES,
             headers={"X-API-Key": api_key, "Content-Type": "application/json"},
             json={
                 "urls": bounded_urls,
@@ -89,8 +91,6 @@ def fetch_pages(urls: list[str], *, purpose: str, limit: int = 10) -> FetchBatch
             },
             timeout=35.0,
         )
-        response.raise_for_status()
-        payload = response_json_limited(response, MAX_PROVIDER_RESPONSE_BYTES)
     except (httpx.HTTPError, ValueError) as exc:
         raise TinyFishFetchError("TinyFish Fetch request failed.") from exc
 
