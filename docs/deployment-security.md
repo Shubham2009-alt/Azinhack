@@ -1,37 +1,25 @@
 # Deployment security boundary
 
-## Current deployment model
+## Authentication and ownership
+ResearchPilot uses Supabase Auth to authenticate API requests. The backend validates bearer tokens and stores the authenticated user ID on each new research run. Every run-specific endpoint checks ownership; unknown and non-owned IDs return the same 404. Older runs without an owner are intentionally inaccessible.
 
-ResearchPilot uses Supabase Auth to authenticate API requests. The backend validates bearer tokens against the configured Supabase Auth user endpoint and stores the authenticated user ID on each newly created research run. Every run-specific endpoint checks that the caller owns the run; unknown and non-owned run IDs return the same `404` response. Older runs without an owner are intentionally inaccessible through the API after this migration.
+Keep provider credentials in environment variables or a secret manager. Use HTTPS at the public edge, restrict CORS to exact frontend origins, and review retention/deletion before collecting real user research data.
 
-Until authentication and ownership checks are implemented consistently across every run-specific endpoint:
+## Production configuration
+Set `APP_ENV=production`. Startup validation requires `TINYFISH_API_KEY`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `REDIS_URL`. Frontend and Supabase URLs must be HTTPS; LLM base URL must use HTTPS. Never use a Supabase secret/service-role key in the frontend.
 
-- Use only public or synthetic research questions in shared demos.
-- Do not submit personal, confidential, regulated, or otherwise sensitive material.
-- Do not advertise the deployment as a private workspace or multi-user service.
-- Treat run IDs and report URLs as potentially shareable; do not rely on UUID unpredictability to protect sensitive data.
-- Keep provider credentials on the backend in environment variables or a secret manager. Never put them in frontend variables or commits.
-- Use HTTPS at the public edge, restrict CORS to the exact frontend origin(s), and place the service behind platform-level abuse protection where available.
-- Review retention and deletion needs before collecting real user research data.
+## Shared rate limiting
+Creating a research run is limited to five requests per direct client IP per ten-minute sliding window. Production uses Redis with an atomic Lua script, sharing the limit across workers and replicas. If Redis is unavailable, requests fail with 503 instead of silently downgrading to a weaker per-process limit. Local development can omit `REDIS_URL` and use an in-memory fallback.
 
-## Production startup guard
+The limiter uses the direct ASGI client address, not arbitrary `X-Forwarded-For` input. Configure trusted proxies carefully. IP-based limits can be evaded by rotating addresses, so they complement rather than replace account-level quotas and edge abuse protection. Store Redis credentials in deployment secrets and use `rediss://` when supported.
 
-Set `APP_ENV=production` for a production deployment. Startup validation requires non-empty `TINYFISH_API_KEY`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY`; requires explicit HTTPS frontend and Supabase URLs; rejects localhost frontend/Supabase URLs; and requires the LLM base URL to use HTTPS.
+## Before real users
+1. Configure Supabase Email auth, site URLs, and confirmation policy; set backend `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, and frontend `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.
+2. Provision Redis and set `REDIS_URL` in the deployment secret manager.
+3. Serve frontend/API over HTTPS and restrict CORS.
+4. Verify one user cannot access another user's status, sources, report, or graph.
+5. Define sharing, retention, deletion, and logging policies.
 
-These checks reduce common misconfiguration risks but do not validate the security of a hosting provider or replace a deployment review. Keep `APP_ENV=development` for the documented local workflow. The Supabase publishable key is designed for client use; never configure a Supabase secret/service-role key in the frontend or use it as the backend verification key.
-
-## Before opening the service to real users
-
-1. Configure Supabase Email authentication, site URLs, and confirmation policy; set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` on the backend and `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` on the frontend.
-2. Ensure the frontend and API are served over HTTPS and CORS is restricted to the exact frontend origin.
-3. Test that one user cannot access another user's run through status, sources, report, or graph endpoints.
-4. Define run-sharing behavior explicitly; sharing is not enabled by default.
-5. Define data retention, deletion, logging, and rate-limit policies, then review the deployed service.
-
-
-## Health and readiness probes
-
-- `GET /api/health` is a liveness probe. It confirms that the API process is responding and intentionally does not verify database availability.
-- `GET /api/health/ready` is a readiness probe. It executes a lightweight database query and returns `200` when the database is reachable or `503` when the check fails. The response body does not expose database exception details.
-
-Configure hosting-platform probes according to their purpose: use liveness to detect a stuck or stopped process, and readiness to decide whether the instance should receive traffic. A successful readiness check does not verify TinyFish or LLM provider availability and does not establish that a complete research run will succeed.
+## Health probes
+- `GET /api/health` is liveness and does not check dependencies.
+- `GET /api/health/ready` checks database connectivity and returns 503 if unavailable. It does not verify Redis, TinyFish, or LLM availability.
