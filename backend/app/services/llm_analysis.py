@@ -4,7 +4,7 @@ from typing import Literal
 import httpx
 from pydantic import BaseModel, Field, ValidationError
 
-from app.services.provider_io import response_json_limited
+from app.services.provider_io import request_json_limited
 from app.settings import settings
 
 MAX_SOURCE_CHARS = 12_000
@@ -89,8 +89,10 @@ def extract_source_claims(
         "source_text": bounded_content,
     }
     try:
-        response = httpx.post(
+        payload = request_json_limited(
+            "POST",
             _endpoint(settings.llm_base_url),
+            max_bytes=MAX_PROVIDER_RESPONSE_BYTES,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
                 "model": model,
@@ -103,8 +105,6 @@ def extract_source_claims(
             },
             timeout=45.0,
         )
-        response.raise_for_status()
-        payload = response_json_limited(response, MAX_PROVIDER_RESPONSE_BYTES)
     except (httpx.HTTPError, ValueError, AnalysisConfigurationError) as exc:
         raise AnalysisProviderError("LLM analysis request failed.") from exc
 
@@ -175,8 +175,10 @@ def verify_source_claims(
         "Return exactly one decision for every supplied index. Be conservative; use unsupported when unsure."
     )
     try:
-        response = httpx.post(
+        payload = request_json_limited(
+            "POST",
             _endpoint(settings.llm_base_url),
+            max_bytes=MAX_PROVIDER_RESPONSE_BYTES,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
                 "model": model,
@@ -195,8 +197,6 @@ def verify_source_claims(
             },
             timeout=45.0,
         )
-        response.raise_for_status()
-        payload = response_json_limited(response, MAX_PROVIDER_RESPONSE_BYTES)
         content_value = payload["choices"][0]["message"]["content"]
         if not isinstance(content_value, str):
             raise ValueError("Invalid response content")
