@@ -105,6 +105,14 @@ def enforce_create_run_rate_limit(
         _reject(int(result[1]) if result and len(result) > 1 else CREATE_RUN_WINDOW_SECONDS)
 
 
+def check_rate_limit_store() -> bool:
+    """Return whether the configured Redis rate-limit store is reachable."""
+    try:
+        return bool(_get_redis_client().ping())
+    except (RedisError, ValueError):
+        return False
+
+
 def clear_rate_limit_state() -> None:
     """Clear local limiter state and cached Redis client for isolated tests."""
     global _redis_client
