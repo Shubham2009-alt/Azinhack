@@ -39,5 +39,7 @@ def test_init_db_adds_content_column_to_existing_source_table(monkeypatch) -> No
     monkeypatch.setattr(database, "engine", engine)
     database.init_db()
     columns = {column["name"] for column in inspect(engine).get_columns("sources")}
+    run_columns = {column["name"] for column in inspect(engine).get_columns("research_runs")}
     assert "content_text" in columns
+    assert "owner_id" in run_columns
     engine.dispose()

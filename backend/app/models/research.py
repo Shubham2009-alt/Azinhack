@@ -20,6 +20,7 @@ class ResearchRun(Base):
     __tablename__ = "research_runs"
     __table_args__ = (CheckConstraint("progress >= 0 AND progress <= 100", name="ck_run_progress"), Index("ix_run_status_created", "status", "created_at"))
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     question: Mapped[str] = mapped_column(Text, nullable=False)
     year_min: Mapped[int | None] = mapped_column(nullable=True)
     year_max: Mapped[int | None] = mapped_column(nullable=True)

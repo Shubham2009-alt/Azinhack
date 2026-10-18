@@ -42,6 +42,13 @@ def init_db() -> None:
     # create_all does not add columns to an existing table. Keep databases created
     # before source-content storage usable without dropping collected research runs.
     inspector = inspect(engine)
+    if "research_runs" in inspector.get_table_names():
+        run_columns = {column["name"] for column in inspector.get_columns("research_runs")}
+        if "owner_id" not in run_columns:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE research_runs ADD COLUMN owner_id VARCHAR(36)"))
+
+    inspector = inspect(engine)
     if "sources" in inspector.get_table_names():
         source_columns = {column["name"] for column in inspector.get_columns("sources")}
         if "content_text" not in source_columns:

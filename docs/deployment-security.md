@@ -2,7 +2,7 @@
 
 ## Current deployment model
 
-ResearchPilot is a demo-first MVP. It does **not** implement user authentication, sessions, or per-user ownership for research runs. The run ID is an identifier, not an authorization mechanism. Anyone who obtains a run ID may be able to read the corresponding status, source list, report, and evidence graph through the API.
+ResearchPilot uses Supabase Auth to authenticate API requests. The backend validates bearer tokens against the configured Supabase Auth user endpoint and stores the authenticated user ID on each newly created research run. Every run-specific endpoint checks that the caller owns the run; unknown and non-owned run IDs return the same `404` response. Older runs without an owner are intentionally inaccessible through the API after this migration.
 
 Until authentication and ownership checks are implemented consistently across every run-specific endpoint:
 
@@ -16,18 +16,17 @@ Until authentication and ownership checks are implemented consistently across ev
 
 ## Production startup guard
 
-Set `APP_ENV=production` for a production deployment. Startup validation then requires non-empty `TINYFISH_API_KEY`, `LLM_API_KEY`, `LLM_BASE_URL`, and `LLM_MODEL`; requires an explicit HTTPS `FRONTEND_ORIGIN`; rejects localhost frontend origins; and requires the LLM base URL to use HTTPS.
+Set `APP_ENV=production` for a production deployment. Startup validation requires non-empty `TINYFISH_API_KEY`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `SUPABASE_URL`, and `SUPABASE_PUBLISHABLE_KEY`; requires explicit HTTPS frontend and Supabase URLs; rejects localhost frontend/Supabase URLs; and requires the LLM base URL to use HTTPS.
 
-These checks reduce common misconfiguration risks. They do **not** add authentication, enforce research-run ownership, validate the security of a hosting provider, or replace a deployment review. Keep `APP_ENV=development` for the documented local workflow.
+These checks reduce common misconfiguration risks but do not validate the security of a hosting provider or replace a deployment review. Keep `APP_ENV=development` for the documented local workflow. The Supabase publishable key is designed for client use; never configure a Supabase secret/service-role key in the frontend or use it as the backend verification key.
 
 ## Before opening the service to real users
 
-1. Choose an identity provider or implement a well-reviewed authentication flow.
-2. Persist an owner identifier on every research run.
-3. Require authentication on all run-specific endpoints and verify ownership on every request, including status, sources, report, and graph.
-4. Define run-sharing behavior explicitly; do not treat possession of a run ID as authorization by default.
-5. Add tests proving one user cannot read or mutate another user's runs.
-6. Define data retention, deletion, logging, and rate-limit policies, then review the deployed service.
+1. Configure Supabase Email authentication, site URLs, and confirmation policy; set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` on the backend and `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` on the frontend.
+2. Ensure the frontend and API are served over HTTPS and CORS is restricted to the exact frontend origin.
+3. Test that one user cannot access another user's run through status, sources, report, or graph endpoints.
+4. Define run-sharing behavior explicitly; sharing is not enabled by default.
+5. Define data retention, deletion, logging, and rate-limit policies, then review the deployed service.
 
 
 ## Health and readiness probes
