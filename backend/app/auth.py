@@ -6,6 +6,8 @@ from uuid import UUID
 import httpx
 from fastapi import Header, HTTPException
 
+from app.services.provider_io import ProviderResponseTooLarge, request_bytes_limited
+from app.services.provider_io import ProviderResponseTooLarge, request_bytes_limited
 from app.settings import settings
 
 
@@ -14,6 +16,9 @@ class AuthenticatedUser:
     """A Supabase-authenticated user identity trusted by the API."""
 
     id: str
+
+
+MAX_AUTH_PROVIDER_RESPONSE_BYTES = 128 * 1024
 
 
 def _auth_error(status_code: int, code: str, message: str, *, bearer_challenge: bool = False) -> HTTPException:
@@ -40,13 +45,18 @@ def get_current_user(authorization: str | None = Header(default=None)) -> Authen
         raise _auth_error(503, "AUTH_PROVIDER_NOT_CONFIGURED", "Authentication is not configured on this server.")
 
     try:
-        response = httpx.get(
+        response = request_bytes_limited(
+            "GET",
             f"{supabase_url}/auth/v1/user",
+            max_bytes=MAX_AUTH_PROVIDER_RESPONSE_BYTES,
+            check_status=False,
             headers={"apikey": publishable_key, "Authorization": f"Bearer {token.strip()}"},
             timeout=5.0,
         )
     except httpx.RequestError as exc:
         raise _auth_error(503, "AUTH_PROVIDER_UNAVAILABLE", "Authentication provider is temporarily unavailable.") from exc
+    except ProviderResponseTooLarge:
+        raise _auth_error(503, "AUTH_PROVIDER_INVALID_RESPONSE", "Authentication provider returned an oversized response.") from None
 
     if response.status_code == 429 or response.status_code >= 500:
         raise _auth_error(503, "AUTH_PROVIDER_UNAVAILABLE", "Authentication provider is temporarily unavailable.")
