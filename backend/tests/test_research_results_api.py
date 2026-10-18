@@ -184,3 +184,32 @@ def test_another_user_cannot_read_run_or_results(client_and_session, endpoint: s
     )
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "RESEARCH_RUN_NOT_FOUND"
+
+
+
+def test_owner_can_delete_run_and_all_associated_results(client_and_session) -> None:
+    client, db = client_and_session
+    run, _, _, _, _ = seed_run(db)
+
+    response = client.delete(f"/api/research-runs/{run.id}")
+
+    assert response.status_code == 204
+    assert db.query(ResearchRun).filter(ResearchRun.id == run.id).count() == 0
+    assert db.query(Source).filter(Source.run_id == run.id).count() == 0
+    assert db.query(Claim).filter(Claim.run_id == run.id).count() == 0
+    assert db.query(Report).filter(Report.run_id == run.id).count() == 0
+    assert db.query(ClaimRelation).count() == 0
+    assert client.get(f"/api/research-runs/{run.id}/report").status_code == 404
+
+
+def test_non_owner_cannot_delete_a_research_run(client_and_session) -> None:
+    client, db = client_and_session
+    run, _, _, _, _ = seed_run(db)
+
+    response = client.delete(
+        f"/api/research-runs/{run.id}",
+        headers={"x-test-user-id": "00000000-0000-0000-0000-000000000002"},
+    )
+
+    assert response.status_code == 404
+    assert db.get(ResearchRun, run.id) is not None
