@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { apiFetch, getSession, isAuthConfigured, restoreSession, signIn, signOut, signUp, type AuthSession } from "./auth";
 import { isCurrentRefresh, isCurrentRun } from "./runGuards.js";
 
 type Claim = { id: string; claim_text: string; claim_type: string; evidence_excerpt?: string | null; confidence_label: string; is_inference: boolean };
@@ -12,7 +13,7 @@ const examples = ["Can satellite imagery help detect river pollution?", "What li
 const terminal = (s = "") => ["completed", "succeeded", "partial", "failed", "error"].includes(s.toLowerCase());
 const pretty = (s: string) => s.replaceAll("_", " ");
 
-export default function App() {
+function ResearchWorkspace({ session, onSignOut }: { session: AuthSession; onSignOut: () => void }) {
   const [question, setQuestion] = useState("");
   const [yearMin, setYearMin] = useState("");
   const [yearMax, setYearMax] = useState("");
@@ -31,7 +32,7 @@ export default function App() {
     const generation = ++refreshGeneration.current;
     try {
       const responses = await Promise.all([
-        fetch("/api/research-runs/" + id), fetch("/api/research-runs/" + id + "/report"), fetch("/api/research-runs/" + id + "/graph"),
+        apiFetch("/api/research-runs/" + id), apiFetch("/api/research-runs/" + id + "/report"), apiFetch("/api/research-runs/" + id + "/graph"),
       ]);
       const [runResponse, reportResponse, graphResponse] = responses;
       const isCurrent = () => isCurrentRefresh(activeRunId.current, id, refreshGeneration.current, generation);
@@ -55,7 +56,7 @@ export default function App() {
     let cancelled = false;
     const poll = async () => {
       try {
-        const response = await fetch("/api/research-runs/" + runId);
+        const response = await apiFetch("/api/research-runs/" + runId);
         if (!response.ok || !isCurrentRun(activeRunId.current, runId, cancelled)) return;
         const next = await response.json() as Run;
         if (!isCurrentRun(activeRunId.current, runId, cancelled)) return;
@@ -77,7 +78,7 @@ export default function App() {
       const body: { question: string; year_min?: number; year_max?: number } = { question: question.trim() };
       if (yearMin) body.year_min = Number(yearMin);
       if (yearMax) body.year_max = Number(yearMax);
-      const response = await fetch("/api/research-runs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const response = await apiFetch("/api/research-runs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!response.ok) { setNotice(response.status === 422 ? "Check your question and year range. Years must be between 1900 and 2100." : "Could not start research. Check that the API is running."); return; }
       const result = await response.json() as { run_id: string };
       activeRunId.current = result.run_id;
@@ -96,7 +97,7 @@ export default function App() {
   const selectedNode = nodes.find(n => n.id === selected);
 
   return <main className="page-shell">
-    <header className="topbar"><a className="brand" href="/" aria-label="ResearchPilot home"><span className="brand-mark">R</span><span>ResearchPilot<span className="brand-ai"> AI</span></span></a><span className="status-pill"><span className="status-dot" /> Evidence-first research</span></header>
+    <header className="topbar"><a className="brand" href="/" aria-label="ResearchPilot home"><span className="brand-mark">R</span><span>ResearchPilot<span className="brand-ai"> AI</span></span></a><div className="topbar-right"><span className="status-pill"><span className="status-dot" /> Evidence-first research</span><div className="account-controls"><span className="account-email" title={session.user.email}>{session.user.email}</span><button className="signout-button" type="button" onClick={onSignOut}>Sign out</button></div></div></header>
     <section className="hero">
       <p className="eyebrow">EVIDENCE-FIRST RESEARCH</p><h1>Go from a question<br />to a clearer research direction.</h1>
       <p className="hero-copy">Explore sources, compare reported findings, and identify candidate research gaps with evidence you can inspect.</p>
@@ -126,5 +127,85 @@ export default function App() {
     </section>}
     <section className="principles" aria-label="ResearchPilot principles"><article><span className="principle-number">01</span><h2>Traceable evidence</h2><p>Claims should lead back to sources and supporting excerpts.</p></article><article><span className="principle-number">02</span><h2>Compare, don’t flatten</h2><p>Different methods or populations may explain different results.</p></article><article><span className="principle-number">03</span><h2>Honest uncertainty</h2><p>A limited search is not proof that a topic is unexplored.</p></article></section>
     <footer className="footer"><span>ResearchPilot AI</span><span>Early-stage literature exploration · Evidence over assumptions</span></footer>
+  </main>;
+}
+
+
+export default function App() {
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    void restoreSession()
+      .then((next) => { if (active) setSession(next); })
+      .catch(() => { if (active) setSession(null); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  async function submitAuth(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setNotice("");
+    if (!isAuthConfigured()) {
+      setNotice("Authentication is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in frontend/.env.local.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const next = mode === "signin"
+        ? await signIn(email.trim(), password)
+        : await signUp(email.trim(), password);
+      if (next) {
+        setSession(next);
+        setPassword("");
+      } else {
+        setNotice("Account created. Check your email for a confirmation link, then sign in.");
+        setMode("signin");
+        setPassword("");
+      }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Authentication failed. Check your details and try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSignOut() {
+    await signOut();
+    setSession(null);
+    setPassword("");
+    setNotice("");
+  }
+
+  if (loading) {
+    return <main className="auth-shell"><section className="auth-card"><p className="eyebrow">RESEARCH WORKSPACE</p><h1>Loading your session</h1><p className="auth-description">Checking your sign-in status…</p></section></main>;
+  }
+
+  if (session) return <ResearchWorkspace session={session} onSignOut={() => { void handleSignOut(); }} />;
+
+  return <main className="auth-shell">
+    <section className="auth-card">
+      <a className="brand auth-brand" href="/" aria-label="ResearchPilot home"><span className="brand-mark">R</span><span>ResearchPilot<span className="brand-ai"> AI</span></span></a>
+      <p className="eyebrow">{mode === "signin" ? "YOUR RESEARCH WORKSPACE" : "CREATE YOUR WORKSPACE"}</p>
+      <h1>{mode === "signin" ? "Sign in to continue." : "Create your account."}</h1>
+      <p className="auth-description">Keep your research runs associated with your account. Sign-in is managed by Supabase Auth.</p>
+      <form className="auth-form" onSubmit={submitAuth}>
+        <label htmlFor="auth-email">Email</label>
+        <input id="auth-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required maxLength={320} />
+        <label htmlFor="auth-password">Password</label>
+        <input id="auth-password" type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} maxLength={128} />
+        <button className="auth-submit" type="submit" disabled={busy || !isAuthConfigured()}>{busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}</button>
+        {!isAuthConfigured() && <p className="notice" role="status">Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in frontend/.env.local to enable authentication.</p>}
+        {notice && <p className="notice" role="status">{notice}</p>}
+      </form>
+      <p className="auth-switch">{mode === "signin" ? "New to ResearchPilot?" : "Already have an account?"} <button type="button" onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setNotice(""); }}>{mode === "signin" ? "Create account" : "Sign in"}</button></p>
+      <p className="auth-footnote">Use a unique password. Account confirmation may be required by your Supabase project settings.</p>
+    </section>
   </main>;
 }
