@@ -113,6 +113,35 @@ def test_search_deduplicates_urls_and_ignores_invalid_results(
     assert results[0].url == "https://example.org/paper"
 
 
+def test_search_bounds_untrusted_metadata_fields(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tinyfish_search.settings, "tinyfish_api_key", "test-key")
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self) -> dict:
+            return {"results": [{
+                "title": "  " + "T" * 1200 + "  ",
+                "url": "https://example.org/paper",
+                "snippet": "S" * 2500,
+                "site_name": "P" * 400,
+                "authors": [" A " * 200 for _ in range(60)] + [42],
+                "venue": "V" * 600,
+            }]}
+
+    monkeypatch.setattr(tinyfish_search.httpx, "get", lambda *args, **kwargs: FakeResponse())
+    result = search_research_papers("research question")[0]
+
+    assert len(result.title) == 1000
+    assert result.title.startswith("T")
+    assert len(result.snippet or "") == 2000
+    assert len(result.publisher or "") == 300
+    assert len(result.authors or []) == 50
+    assert all(len(author) <= 300 for author in result.authors or [])
+    assert len(result.venue or "") == 500
+
+
 def test_search_wraps_http_and_invalid_json_errors(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(tinyfish_search.settings, "tinyfish_api_key", "test-key")
 
