@@ -23,6 +23,14 @@ The limiter uses the direct ASGI client address, not arbitrary `X-Forwarded-For`
 4. Verify one user cannot access another user's status, sources, report, or graph.
 5. Define sharing, retention, deletion, and logging policies.
 
+## Research data retention and deletion
+
+The default application retention window is 90 days from run creation. Set `RESEARCH_RETENTION_DAYS` to a value from 1 to 3650 to change it. The background worker periodically removes expired terminal runs in bounded batches; active runs are not removed by automatic retention. Keep the policy aligned with user disclosures and any applicable institutional/legal requirements.
+
+An authenticated owner can delete a run immediately with `DELETE /api/research-runs/{run_id}`. The API removes the run, stored source text and metadata, claims, report, evidence links, and claim relations in one database transaction. Non-owners and unknown IDs receive the same 404 response. The frontend exposes a confirmation-protected delete action for the current run.
+
+Application deletion does not instantly erase copies in database backups, provider logs, hosting logs, or external backups. Define backup expiry and provider-side logging/retention separately, avoid putting source content or credentials into logs, and test a deletion against a non-production copy before production rollout.
+
 ## Health probes
 - `GET /api/health` is liveness and does not check dependencies.
 - `GET /api/health/ready` checks database connectivity and, in production, Redis connectivity for the required rate limiter. It returns 503 if either check fails. It does not verify TinyFish or LLM availability.
