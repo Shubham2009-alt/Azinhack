@@ -133,7 +133,7 @@ def test_search_bounds_untrusted_metadata_fields(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(tinyfish_search.httpx, "get", lambda *args, **kwargs: FakeResponse())
     result = search_research_papers("research question")[0]
 
-    assert len(result.title) == 1200
+    assert len(result.title) == 1000
     assert result.title.startswith("T")
     assert len(result.snippet or "") == 2000
     assert len(result.publisher or "") == 300

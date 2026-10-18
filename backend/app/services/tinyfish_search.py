@@ -164,12 +164,12 @@ def search_research_papers(
 
         results.append(
             PaperSearchResult(
-                title=title.strip(),
+                title=title.strip()[:1000],
                 url=normalized_url,
                 snippet=(item.get("snippet")[:2000] if isinstance(item.get("snippet"), str) else None),
                 publisher=(item.get("site_name", "")[:300] or None if isinstance(item.get("site_name"), str) else None),
                 publication_year=year,
-                authors=[author.strip()[:300] for author in authors[:50] if author.strip()],
+                authors=[author.strip()[:300] for author in (authors or [])[:50] if author.strip()],
                 venue=(item.get("venue", "")[:500] or None if isinstance(item.get("venue"), str) else None),
                 citation_count=citation_count,
             )
